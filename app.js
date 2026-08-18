@@ -43,6 +43,9 @@
       {id:106,name:'Glace vanille',supplier:'Dairy & Desserts',unit:'litre',pricePesos:92}
     ],
     productCategories: ['Burgers','Sides','Boissons','Desserts','Autres'],
+    discounts: [
+      {id:1,name:'5 %',percent:5},{id:2,name:'10 %',percent:10},{id:3,name:'15 %',percent:15},{id:4,name:'20 %',percent:20}
+    ],
     supplyOrders: [], cashDrawerPesos:0, exchangeRate:EXCHANGE_RATE, lowStockThreshold:5, taxRate:10
   };
 
@@ -57,6 +60,8 @@
     const baseCategories=Array.isArray(target.productCategories)?target.productCategories.map(c=>String(c||'').trim()).filter(Boolean):[];
     target.productCategories=[...new Set([...baseCategories,...usedCategories])];
     if(!target.productCategories.length)target.productCategories=['Autres'];
+    if(!Array.isArray(target.discounts)) target.discounts=fresh().discounts;
+    target.discounts=target.discounts.map((d,i)=>({id:d?.id ?? (Date.now()+i),name:String(d?.name||((Number(d?.percent)||0)+' %')).trim(),percent:Math.min(100,Math.max(0,Number(d?.percent)||0))})).filter(d=>d.name&&d.percent>0);
     return target;
   }
   function load(){
@@ -315,7 +320,7 @@
   }
 
 
-  const CLIENT_BUILD='11.9.1';
+  const CLIENT_BUILD='11.10.0';
   let buildCheckTimer=null;
 
   async function checkForNewBuild(force=false){
@@ -414,7 +419,7 @@
   }
 
   function categories(){ normalizeData(data); return ['Tous',...data.productCategories]; }
-  function renderPOS(){ renderCategories(); renderProducts(); renderCart(); }
+  function renderPOS(){ renderCategories(); renderProducts(); renderDiscountSelect(); renderCart(); }
   function renderCategories(){ $('#categoryTabs').innerHTML=categories().map(c=>`<button type="button" class="${state.category===c?'active':''}" data-cat="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join(''); $$('[data-cat]').forEach(b=>b.onclick=()=>{state.category=b.dataset.cat;renderCategories();renderProducts();}); }
   function renderProducts(){
     const q=state.productSearch.trim().toLowerCase(); const list=data.products.filter(p=>(state.category==='Tous'||p.category===state.category)&&p.name.toLowerCase().includes(q));
@@ -423,6 +428,38 @@
   }
   function addToCart(id){ const p=data.products.find(x=>x.id===id); if(!p||p.stock<=0) return; const item=state.cart.find(x=>x.id===id); if((item?.qty||0)>=p.stock){toast('Stock maximum atteint');return;} if(item)item.qty++; else state.cart.push({id:p.id,name:p.name,price:p.price,qty:1}); renderCart(); }
   function changeQty(id,delta){ const item=state.cart.find(x=>x.id===id); const p=data.products.find(x=>x.id===id); if(!item||!p)return; if(delta>0&&item.qty>=p.stock){toast('Stock insuffisant');return;} item.qty+=delta; if(item.qty<=0)state.cart=state.cart.filter(x=>x.id!==id); renderCart(); }
+  function renderDiscountSelect(){
+    const select=$('#discountSelect'); if(!select)return; normalizeData(data);
+    const current=Number(state.discount)||0;
+    select.innerHTML='<option value="0">Aucune</option>'+data.discounts.map(d=>`<option value="${d.percent}">${escapeHtml(d.name)} (${Number(d.percent)} %)</option>`).join('');
+    if(current>0&&!data.discounts.some(d=>Number(d.percent)===current)) select.innerHTML+=`<option value="${current}">${current} %</option>`;
+    select.value=String(current);
+  }
+  function renderDiscountManager(){
+    const host=$('#discountManagerList'); if(!host)return; normalizeData(data);
+    host.innerHTML=data.discounts.length?data.discounts.map((d,index)=>`<div class="discount-manager-row">
+      <input type="text" value="${escapeHtml(d.name)}" maxlength="40" data-discount-name="${index}" aria-label="Nom de la remise" />
+      <div class="discount-percent-field"><input type="number" min="0.1" max="100" step="0.1" value="${Number(d.percent)}" data-discount-percent="${index}" aria-label="Pourcentage" /><span>%</span></div>
+      <button type="button" class="table-action danger" data-discount-delete="${index}">Supprimer</button>
+    </div>`).join(''):'<div class="empty-mini">Aucune remise personnalisée.</div>';
+    $$('[data-discount-name]').forEach(x=>x.onchange=()=>updateDiscount(Number(x.dataset.discountName),'name',x.value));
+    $$('[data-discount-percent]').forEach(x=>x.onchange=()=>updateDiscount(Number(x.dataset.discountPercent),'percent',x.value));
+    $$('[data-discount-delete]').forEach(x=>x.onclick=()=>deleteDiscount(Number(x.dataset.discountDelete)));
+  }
+  function addDiscount(){
+    if(!can(3)){toast('Accès refusé');return;} normalizeData(data);
+    data.discounts.push({id:Date.now(),name:'Nouvelle remise',percent:10}); save(); log('Remises','Nouvelle remise créée'); renderAll(); toast('Remise ajoutée');
+  }
+  function updateDiscount(index,field,value){
+    if(!can(3)){toast('Accès refusé');renderDiscountManager();return;} const d=data.discounts[index]; if(!d)return;
+    if(field==='name'){value=String(value||'').trim();if(!value){toast('Le nom ne peut pas être vide');renderDiscountManager();return;}d.name=value;}
+    else {value=Number(value);if(!Number.isFinite(value)||value<=0||value>100){toast('Le pourcentage doit être entre 0,1 et 100');renderDiscountManager();return;}d.percent=Math.round(value*10)/10;}
+    save();log('Remises',`${d.name} : ${d.percent}%`);renderAll();toast('Remise enregistrée');
+  }
+  function deleteDiscount(index){
+    if(!can(3)){toast('Accès refusé');return;} const d=data.discounts[index];if(!d)return;
+    confirmAction('Supprimer cette remise ?',`${d.name} (${d.percent} %) sera retirée de la caisse.`,()=>{data.discounts.splice(index,1);if(Number(state.discount)===Number(d.percent))state.discount=0;save();log('Remises',`${d.name} supprimée`);renderAll();toast('Remise supprimée');});
+  }
   function calcTotals(){ const subtotal=state.cart.reduce((s,i)=>s+i.price*i.qty,0); const discount=subtotal*(Number(state.discount)/100); const total=Math.max(0,subtotal-discount); const tax=total-(total/(1+Number(data.taxRate)/100)); return{subtotal,discount,total,tax}; }
   function renderCart(){
     const count=state.cart.reduce((s,i)=>s+i.qty,0); $('#ticketItemCount').textContent=`${count} article${count>1?'s':''}`;
@@ -791,7 +828,7 @@
   function closeDialog(id){ const d=$('#'+id);if(d.open&&typeof d.close==='function')d.close();else d.removeAttribute('open'); if(!$$('dialog[open]').length)$('#modalBackdrop').classList.add('hidden'); }
   function confirmAction(title,text,fn){ state.confirmAction=fn;$('#confirmTitle').textContent=title;$('#confirmText').textContent=text;openDialog('confirmDialog'); }
 
-  function renderAll(){ normalizeData(data);renderDashboard();renderPOS();renderStock();renderSupplies();renderSales();renderDrawer();renderEmployees();renderJournal();renderCategoryManager();$('#lowStockThreshold').value=data.lowStockThreshold;$('#taxRate').value=data.taxRate; }
+  function renderAll(){ normalizeData(data);renderDashboard();renderPOS();renderStock();renderSupplies();renderSales();renderDrawer();renderEmployees();renderJournal();renderCategoryManager();renderDiscountManager();$('#lowStockThreshold').value=data.lowStockThreshold;$('#taxRate').value=data.taxRate; }
 
   // Login bindings
   $$('#pinPad [data-pin]').forEach(b=>b.addEventListener('click',()=>pressPin(b.dataset.pin)));
@@ -838,6 +875,7 @@ if($('#cashPayBtn')) $('#cashPayBtn').onclick=()=>openOrderConfirmation('Espèce
   $('#addEmployee').onclick=()=>openEmployeeDialog();$('#employeeForm').addEventListener('submit',saveEmployee);$('#journalSearch').oninput=e=>{state.journalSearch=e.target.value;renderJournal();};$('#clearJournal').onclick=()=>confirmAction('Vider le journal ?','Toutes les traces d’activité seront supprimées.',()=>{data.journal=[];save();renderJournal();toast('Journal vidé');});
 
   // Settings/data
+  if($('#addDiscount')) $('#addDiscount').onclick=addDiscount;
   $('#saveSettings').onclick=()=>{data.lowStockThreshold=Math.max(1,Math.floor(Number($('#lowStockThreshold').value)||5));data.taxRate=Math.max(0,Number($('#taxRate').value)||0);save();log('Réglages',`Seuil stock ${data.lowStockThreshold} • TVA ${data.taxRate}%`);renderAll();toast('Réglages enregistrés');};$('#exportData').onclick=exportData;$('#importDataButton').onclick=()=>$('#importDataInput').click();$('#importDataInput').onchange=e=>{const f=e.target.files?.[0];if(f)importData(f);e.target.value='';};$('#resetApp').onclick=()=>confirmAction('Réinitialiser l’application ?','Produits, stocks, ventes, employés et journal seront remis à zéro.',()=>{const reset=fresh();Object.keys(data).forEach(k=>delete data[k]);Object.assign(data,reset);save();state.currentUser=null;toast('Application réinitialisée');setTimeout(lockApp,350);});
 
   // Dialogs
