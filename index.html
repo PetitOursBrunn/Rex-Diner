@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#12100f" />
   <title>Rex's Diner — Caisse & Gestion</title>
-  <link rel="stylesheet" href="styles.css?v=11.7.0" />
-  <meta name="rexs-build" content="11.7.0" />
+  <link rel="stylesheet" href="styles.css?v=11.8.0" />
+  <meta name="rexs-build" content="11.8.0" />
 </head>
 <body>
   <div id="loginView" class="login-view">
@@ -241,7 +241,7 @@
                 <div><span class="kicker">CATALOGUE FOURNISSEURS</span><h3>Matières disponibles</h3></div>
               </div>
               <div class="table-toolbar">
-                <label class="search"><span>⌕</span><input id="materialSearch" placeholder="Matière, fournisseur, unité..." /></label>
+                <label class="search"><span>⌕</span><input id="materialSearch" placeholder="Matière, fournisseur, unité..." /></label><button type="button" id="sortMaterialsAZ" class="button button-soft">A → Z</button>
               </div>
               <div class="table-wrap">
                 <table>
@@ -354,7 +354,7 @@
             </article>
 
             <article class="panel settings-card"><span class="kicker">RESTAURANT</span><h3>Informations</h3><label>Nom du restaurant<input value="Rex's Diner" disabled /></label><label>Devise de référence<input value="Dollar ($)" disabled /></label><label>Taux de change<input value="1 $ = 23 pesos" disabled /></label></article>
-            <article class="panel settings-card"><span class="kicker">VENTES & STOCK</span><h3>Paramètres</h3><label>Seuil de stock faible<input id="lowStockThreshold" type="number" min="1" max="999" /></label><label>TVA indicative (%)<input id="taxRate" type="number" min="0" max="100" step="0.1" /></label><button type="button" id="saveSettings" class="button button-primary">Enregistrer</button></article>
+            <article class="panel settings-card"><span class="kicker">VENTES & STOCK</span><h3>Paramètres</h3><label>Seuil de stock faible<input id="lowStockThreshold" type="number" min="1" max="999" /></label><label>TVA indicative (%)<input id="taxRate" type="number" min="0" max="100" step="0.1" /></label><button type="button" id="saveSettings" class="button button-primary">Enregistrer</button></article><article class="panel settings-card category-settings-card"><span class="kicker">CATALOGUE</span><h3>Catégories des produits</h3><p>Renomme les catégories et change leur ordre dans la caisse avec les flèches.</p><div id="categoryManagerList" class="category-manager-list"></div></article>
             <article class="panel settings-card"><span class="kicker">SAUVEGARDE</span><h3>Données</h3><p>Exporte toutes les données de la caisse pour conserver une sauvegarde locale.</p><div class="stack-buttons"><button type="button" id="exportData" class="button button-soft">Télécharger la sauvegarde</button><button type="button" id="importDataButton" class="button button-soft">Importer une sauvegarde</button><input id="importDataInput" type="file" accept="application/json" hidden /></div></article>
             <article class="panel settings-card danger-zone"><span class="kicker">ZONE SENSIBLE</span><h3>Réinitialisation</h3><p>Supprime les données locales et remet l'application à son état de démonstration.</p><button type="button" id="resetApp" class="button button-danger">Réinitialiser l'application</button></article>
           </div>
@@ -373,7 +373,7 @@
       <input id="productId" type="hidden" />
       <div class="form-grid">
         <label>Nom<input id="productName" required maxlength="50" /></label>
-        <label>Catégorie<select id="productCategory"><option>Burgers</option><option>Sides</option><option>Boissons</option><option>Desserts</option><option>Autres</option></select></label>
+        <label>Catégorie<select id="productCategory"></select></label>
         <label>Prix ($)<input id="productPrice" type="number" min="0" step="0.10" required /></label>
         <label>Stock<input id="productStock" type="number" min="0" step="1" required /></label>
         <label>Emoji / icône<input id="productIcon" maxlength="4" placeholder="🍔" /></label>
@@ -499,6 +499,6 @@
     <footer><button type="button" class="button button-soft" data-close-dialog="confirmDialog">Annuler</button><button type="button" id="confirmButton" class="button button-danger">Confirmer</button></footer>
   </dialog>
 
-  <script src="app.js?v=11.7.0"></script>
+  <script src="app.js?v=11.8.0"></script>
 </body>
 </html>

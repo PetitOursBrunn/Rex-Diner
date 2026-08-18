@@ -42,12 +42,23 @@
       {id:105,name:'Boissons gazeuses',supplier:'Beverage Distribution',unit:'caisse',pricePesos:575},
       {id:106,name:'Glace vanille',supplier:'Dairy & Desserts',unit:'litre',pricePesos:92}
     ],
+    productCategories: ['Burgers','Sides','Boissons','Desserts','Autres'],
     supplyOrders: [], cashDrawerPesos:0, exchangeRate:EXCHANGE_RATE, lowStockThreshold:5, taxRate:10
   };
 
   const KEY='rexs_diner_pos_v10_cache';
   const OLD_KEY='rexs_diner_pos_v8_cache';
   function fresh(){ return JSON.parse(JSON.stringify(defaults)); }
+  function normalizeData(target){
+    if(!target||typeof target!=='object')return target;
+    if(!Array.isArray(target.products))target.products=[];
+    if(!Array.isArray(target.materials))target.materials=[];
+    const usedCategories=[...new Set(target.products.map(p=>String(p.category||'Autres').trim()||'Autres'))];
+    const baseCategories=Array.isArray(target.productCategories)?target.productCategories.map(c=>String(c||'').trim()).filter(Boolean):[];
+    target.productCategories=[...new Set([...baseCategories,...usedCategories])];
+    if(!target.productCategories.length)target.productCategories=['Autres'];
+    return target;
+  }
   function load(){
     try {
       const raw=localStorage.getItem(KEY)||localStorage.getItem(OLD_KEY); if(!raw) return fresh();
@@ -61,11 +72,11 @@
         if(m.currency==='USD') return {...m,originalCurrency:'USD',originalAmount:Number(m.amount)||0,currency:'MXN',amount:toPesos(m.amount),before:toPesos(m.before),after:toPesos(m.after)};
         return {...m,currency:'MXN'};
       });
-      merged.exchangeRate=EXCHANGE_RATE; return merged;
+      merged.exchangeRate=EXCHANGE_RATE; return normalizeData(merged);
     }
-    catch { return fresh(); }
+    catch { return normalizeData(fresh()); }
   }
-  const data=load();
+  const data=normalizeData(load());
   const sync={
     ready:false,connected:false,revision:0,
     clientId:(crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random()),
@@ -125,6 +136,7 @@
     sync.suppress=true;
     Object.keys(data).forEach(k=>delete data[k]);
     Object.assign(data,fresh(),remote);
+    normalizeData(data);
     data.exchangeRate=EXCHANGE_RATE;
     localStorage.setItem(KEY,JSON.stringify(data));
     if(userId){
@@ -303,7 +315,7 @@
   }
 
 
-  const CLIENT_BUILD='11.7.0';
+  const CLIENT_BUILD='11.8.0';
   let buildCheckTimer=null;
 
   async function checkForNewBuild(force=false){
@@ -401,7 +413,7 @@
     renderCashOverview();
   }
 
-  function categories(){ return ['Tous',...new Set(data.products.map(p=>p.category))]; }
+  function categories(){ normalizeData(data); return ['Tous',...data.productCategories]; }
   function renderPOS(){ renderCategories(); renderProducts(); renderCart(); }
   function renderCategories(){ $('#categoryTabs').innerHTML=categories().map(c=>`<button type="button" class="${state.category===c?'active':''}" data-cat="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join(''); $$('[data-cat]').forEach(b=>b.onclick=()=>{state.category=b.dataset.cat;renderCategories();renderProducts();}); }
   function renderProducts(){
@@ -500,11 +512,61 @@
     $('#stockTable').innerHTML=list.length?list.map(p=>{const st=statusFor(p.stock);return `<tr><td><div class="product-cell"><span class="cell-icon">${p.icon||'🍽️'}</span><b>${escapeHtml(p.name)}</b></div></td><td>${escapeHtml(p.category)}</td><td>${money(p.price)}</td><td><b>${p.stock}</b></td><td><span class="status ${st.cls}">${st.label}</span></td><td class="right"><div class="table-actions"><button type="button" class="table-action stock" data-stock="${p.id}">± Stock</button><button type="button" class="table-action edit" data-edit-product="${p.id}">Modifier</button><button type="button" class="table-action danger" data-delete-product="${p.id}">Supprimer</button></div></td></tr>`}).join(''):'<tr><td colspan="6" class="empty-table">Aucun produit trouvé.</td></tr>';
     $$('[data-stock]').forEach(b=>b.onclick=()=>openStockDialog(Number(b.dataset.stock))); $$('[data-edit-product]').forEach(b=>b.onclick=()=>openProductDialog(Number(b.dataset.editProduct))); $$('[data-delete-product]').forEach(b=>b.onclick=()=>deleteProduct(Number(b.dataset.deleteProduct)));
   }
-  function openProductDialog(id=null){ if(!can(2)){toast('Accès refusé');return;} const p=id?data.products.find(x=>x.id===id):null; $('#productDialogTitle').textContent=p?'Modifier le produit':'Ajouter un produit'; $('#productId').value=p?.id||''; $('#productName').value=p?.name||''; $('#productCategory').value=p?.category||'Burgers'; $('#productPrice').value=p?.price??''; $('#productStock').value=p?.stock??0; $('#productIcon').value=p?.icon||'🍽️'; openDialog('productDialog'); setTimeout(()=>$('#productName').focus(),50); }
+  function refreshProductCategorySelect(selected=null){
+    normalizeData(data);
+    const select=$('#productCategory'); if(!select)return;
+    select.innerHTML=data.productCategories.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    const wanted=selected||data.productCategories[0]||'Autres';
+    if(!data.productCategories.includes(wanted)){data.productCategories.push(wanted);select.innerHTML+=`<option value="${escapeHtml(wanted)}">${escapeHtml(wanted)}</option>`;}
+    select.value=wanted;
+  }
+  function openProductDialog(id=null){ if(!can(2)){toast('Accès refusé');return;} const p=id?data.products.find(x=>x.id===id):null; $('#productDialogTitle').textContent=p?'Modifier le produit':'Ajouter un produit'; $('#productId').value=p?.id||''; $('#productName').value=p?.name||''; refreshProductCategorySelect(p?.category||data.productCategories[0]); $('#productPrice').value=p?.price??''; $('#productStock').value=p?.stock??0; $('#productIcon').value=p?.icon||'🍽️'; openDialog('productDialog'); setTimeout(()=>$('#productName').focus(),50); }
   function saveProduct(e){ e.preventDefault(); const id=Number($('#productId').value)||null; const product={name:$('#productName').value.trim(),category:$('#productCategory').value,price:Number($('#productPrice').value),stock:Math.max(0,Math.floor(Number($('#productStock').value))),icon:$('#productIcon').value.trim()||'🍽️'}; if(!product.name||!Number.isFinite(product.price)||product.price<0){toast('Vérifie les informations');return;} if(id){Object.assign(data.products.find(p=>p.id===id),product);log('Produit',`${product.name} modifié`);}else{product.id=Date.now();data.products.push(product);log('Produit',`${product.name} ajouté`);}save();closeDialog('productDialog');renderAll();toast(id?'Produit modifié':'Produit ajouté'); }
   function deleteProduct(id){ const p=data.products.find(x=>x.id===id); if(!p)return; confirmAction('Supprimer ce produit ?',`${p.name} sera retiré du catalogue.`,()=>{data.products=data.products.filter(x=>x.id!==id);state.cart=state.cart.filter(x=>x.id!==id);save();log('Produit',`${p.name} supprimé`);renderAll();toast('Produit supprimé');}); }
   function openStockDialog(id){ const p=data.products.find(x=>x.id===id); if(!p)return; state.stockTarget=id;state.stockMode='add';$('#stockProductSummary').innerHTML=`<span class="emoji">${p.icon||'📦'}</span><span><b>${escapeHtml(p.name)}</b><small>Stock actuel : ${p.stock}</small></span>`;$('#stockQuantity').value='1';$$('[data-stock-mode]').forEach(b=>b.classList.toggle('active',b.dataset.stockMode==='add'));openDialog('stockDialog'); }
   function saveStock(e){ e.preventDefault(); const p=data.products.find(x=>x.id===state.stockTarget); if(!p)return; const before=p.stock,q=Math.max(0,Math.floor(Number($('#stockQuantity').value)||0)); if(state.stockMode==='add')p.stock+=q;else if(state.stockMode==='remove')p.stock=Math.max(0,p.stock-q);else p.stock=q;save();log('Stock',`${p.name} : ${before} → ${p.stock}`);closeDialog('stockDialog');renderAll();toast('Stock mis à jour'); }
+
+
+  function renderCategoryManager(){
+    const host=$('#categoryManagerList'); if(!host)return; normalizeData(data);
+    host.innerHTML=data.productCategories.map((c,index)=>`<div class="category-manager-row">
+      <input type="text" value="${escapeHtml(c)}" maxlength="40" data-category-name="${index}" aria-label="Nom de la catégorie ${escapeHtml(c)}" />
+      <div class="order-buttons">
+        <button type="button" class="table-action" data-category-up="${index}" ${index===0?'disabled':''} title="Monter">↑</button>
+        <button type="button" class="table-action" data-category-down="${index}" ${index===data.productCategories.length-1?'disabled':''} title="Descendre">↓</button>
+      </div>
+    </div>`).join('');
+    $$('[data-category-name]').forEach(input=>input.onchange=()=>renameCategory(Number(input.dataset.categoryName),input.value));
+    $$('[data-category-up]').forEach(b=>b.onclick=()=>moveCategory(Number(b.dataset.categoryUp),-1));
+    $$('[data-category-down]').forEach(b=>b.onclick=()=>moveCategory(Number(b.dataset.categoryDown),1));
+  }
+  function renameCategory(index,newName){
+    if(!can(3)){toast('Accès refusé');renderCategoryManager();return;}
+    normalizeData(data); const oldName=data.productCategories[index]; newName=String(newName||'').trim();
+    if(!oldName||!newName){toast('Le nom de catégorie ne peut pas être vide');renderCategoryManager();return;}
+    if(data.productCategories.some((c,i)=>i!==index&&c.toLowerCase()===newName.toLowerCase())){toast('Cette catégorie existe déjà');renderCategoryManager();return;}
+    data.productCategories[index]=newName; data.products.forEach(p=>{if(p.category===oldName)p.category=newName;});
+    if(state.category===oldName)state.category=newName;
+    save();log('Catégories',`${oldName} renommée en ${newName}`);renderAll();toast('Catégorie renommée');
+  }
+  function moveCategory(index,delta){
+    if(!can(3)){toast('Accès refusé');return;} normalizeData(data); const target=index+delta;
+    if(index<0||target<0||index>=data.productCategories.length||target>=data.productCategories.length)return;
+    [data.productCategories[index],data.productCategories[target]]=[data.productCategories[target],data.productCategories[index]];
+    save();log('Catégories',`Ordre modifié : ${data.productCategories.join(' > ')}`);renderAll();toast('Ordre des catégories enregistré');
+  }
+
+  function moveMaterial(id,delta){
+    if(!can(2)){toast('Accès refusé');return;} const index=data.materials.findIndex(m=>m.id===id); const target=index+delta;
+    if(index<0||target<0||target>=data.materials.length)return;
+    [data.materials[index],data.materials[target]]=[data.materials[target],data.materials[index]];
+    save();log('Matières premières',`Ordre modifié : ${data.materials[index].name} / ${data.materials[target].name}`);renderSupplies();toast('Ordre des matières enregistré');
+  }
+  function sortMaterialsAlphabetically(){
+    if(!can(2)){toast('Accès refusé');return;}
+    data.materials.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'fr',{sensitivity:'base'}));
+    save();log('Matières premières','Catalogue classé par ordre alphabétique');renderSupplies();toast('Matières classées de A à Z');
+  }
 
 
   function totalSupplySpent(){ return data.supplyOrders.reduce((s,o)=>s+Number(o.totalPesos||0),0); }
@@ -520,18 +582,22 @@
 
     const q=state.materialSearch.toLowerCase().trim();
     const materials=data.materials.filter(m=>`${m.name} ${m.supplier} ${m.unit}`.toLowerCase().includes(q));
-    $('#materialsTable').innerHTML=materials.length?materials.map(m=>`<tr>
+    $('#materialsTable').innerHTML=materials.length?materials.map(m=>{const realIndex=data.materials.findIndex(x=>x.id===m.id);return `<tr>
       <td><div class="product-cell"><span class="cell-icon">◈</span><b>${escapeHtml(m.name)}</b></div></td>
       <td>${escapeHtml(m.supplier||'—')}</td>
       <td>${escapeHtml(m.unit)}</td>
       <td><b>${peso(m.pricePesos)}</b></td>
       <td class="right"><div class="table-actions">
+        <button type="button" class="table-action order-arrow" data-material-up="${m.id}" ${realIndex===0?'disabled':''} title="Monter">↑</button>
+        <button type="button" class="table-action order-arrow" data-material-down="${m.id}" ${realIndex===data.materials.length-1?'disabled':''} title="Descendre">↓</button>
         <button type="button" class="table-action stock" data-add-material-order="${m.id}">＋ Commander</button>
         <button type="button" class="table-action edit" data-edit-material="${m.id}">Modifier</button>
         <button type="button" class="table-action danger" data-delete-material="${m.id}">Supprimer</button>
       </div></td>
-    </tr>`).join(''):'<tr><td colspan="5" class="empty-table">Aucune matière enregistrée.</td></tr>';
+    </tr>`}).join(''):'<tr><td colspan="5" class="empty-table">Aucune matière enregistrée.</td></tr>';
 
+    $$('[data-material-up]').forEach(b=>b.onclick=()=>moveMaterial(Number(b.dataset.materialUp),-1));
+    $$('[data-material-down]').forEach(b=>b.onclick=()=>moveMaterial(Number(b.dataset.materialDown),1));
     $$('[data-add-material-order]').forEach(b=>b.onclick=()=>addMaterialToDraft(Number(b.dataset.addMaterialOrder)));
     $$('[data-edit-material]').forEach(b=>b.onclick=()=>openMaterialDialog(Number(b.dataset.editMaterial)));
     $$('[data-delete-material]').forEach(b=>b.onclick=()=>deleteMaterial(Number(b.dataset.deleteMaterial)));
@@ -717,15 +783,15 @@
 
   function renderJournal(){ const q=state.journalSearch.toLowerCase().trim();const list=data.journal.filter(j=>`${j.employee} ${j.action} ${j.detail}`.toLowerCase().includes(q));$('#journalTable').innerHTML=list.length?list.map(j=>`<tr><td>${formatDate(j.date)}</td><td>${escapeHtml(j.employee)}</td><td><b>${escapeHtml(j.action)}</b></td><td>${escapeHtml(j.detail)}</td></tr>`).join(''):'<tr><td colspan="4" class="empty-table">Aucune activité enregistrée.</td></tr>'; }
 
-  function exportData(){ const payload={version:11.4,exportedAt:nowISO(),data}; downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`rexs-diner-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);toast('Sauvegarde téléchargée'); }
-  function importData(file){ const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result);const source=parsed.data||parsed;if(!Array.isArray(source.products)||!Array.isArray(source.employees))throw new Error();confirmAction('Importer cette sauvegarde ?','Les données actuelles seront remplacées.',()=>{Object.assign(data,fresh(),source);save();log('Sauvegarde','Données importées');renderAll();renderLogin();toast('Sauvegarde importée');});}catch{toast('Fichier de sauvegarde invalide');}};reader.readAsText(file); }
+  function exportData(){ const payload={version:11.8,exportedAt:nowISO(),data}; downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`rexs-diner-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);toast('Sauvegarde téléchargée'); }
+  function importData(file){ const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result);const source=parsed.data||parsed;if(!Array.isArray(source.products)||!Array.isArray(source.employees))throw new Error();confirmAction('Importer cette sauvegarde ?','Les données actuelles seront remplacées.',()=>{Object.assign(data,fresh(),source);normalizeData(data);save();log('Sauvegarde','Données importées');renderAll();renderLogin();toast('Sauvegarde importée');});}catch{toast('Fichier de sauvegarde invalide');}};reader.readAsText(file); }
   function downloadBlob(blob,name){ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500); }
 
   function openDialog(id){ const d=$('#'+id);$('#modalBackdrop').classList.remove('hidden');if(typeof d.showModal==='function')d.showModal();else d.setAttribute('open',''); }
   function closeDialog(id){ const d=$('#'+id);if(d.open&&typeof d.close==='function')d.close();else d.removeAttribute('open'); if(!$$('dialog[open]').length)$('#modalBackdrop').classList.add('hidden'); }
   function confirmAction(title,text,fn){ state.confirmAction=fn;$('#confirmTitle').textContent=title;$('#confirmText').textContent=text;openDialog('confirmDialog'); }
 
-  function renderAll(){ renderDashboard();renderPOS();renderStock();renderSupplies();renderSales();renderDrawer();renderEmployees();renderJournal();$('#lowStockThreshold').value=data.lowStockThreshold;$('#taxRate').value=data.taxRate; }
+  function renderAll(){ normalizeData(data);renderDashboard();renderPOS();renderStock();renderSupplies();renderSales();renderDrawer();renderEmployees();renderJournal();renderCategoryManager();$('#lowStockThreshold').value=data.lowStockThreshold;$('#taxRate').value=data.taxRate; }
 
   // Login bindings
   $$('#pinPad [data-pin]').forEach(b=>b.addEventListener('click',()=>pressPin(b.dataset.pin)));
@@ -752,6 +818,7 @@
   $('#addMaterial').onclick=()=>openMaterialDialog();
   $('#materialForm').addEventListener('submit',saveMaterial);
   $('#materialSearch').oninput=e=>{state.materialSearch=e.target.value;renderSupplies();};
+  if($('#sortMaterialsAZ')) $('#sortMaterialsAZ').onclick=sortMaterialsAlphabetically;
   $('#openSupplyOrder').onclick=()=>{switchView('supplies');setTimeout(()=>$('#supplyDraftList').scrollIntoView({behavior:'smooth',block:'center'}),80);};
   $('#clearSupplyDraft').onclick=()=>{if(!state.supplyDraft.length)return;confirmAction('Vider la commande en préparation ?','Les matières sélectionnées seront retirées du panier fournisseur.',()=>{state.supplyDraft=[];renderSupplyDraft();toast('Commande en préparation vidée');});};
   $('#supplyOrderNote').oninput=e=>state.supplyNote=e.target.value;

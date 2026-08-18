@@ -431,3 +431,16 @@ html.dark-theme .order-confirm-item{border-color:#2a3038!important}
 /* V11.5 — paiement espèces uniquement */
 .payment-grid{grid-template-columns:1fr!important}
 #cashPayBtn{width:100%;min-height:48px;font-size:12px}
+
+
+/* V11.8 — ordre des matières et gestion des catégories */
+.table-toolbar{gap:10px;flex-wrap:wrap}
+.order-arrow{min-width:34px;padding-left:9px!important;padding-right:9px!important}
+.table-action:disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
+.category-settings-card{grid-column:span 2}
+.category-manager-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.category-manager-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.category-manager-row input{width:100%}
+.order-buttons{display:flex;gap:5px}
+html[data-theme="dark"] .category-manager-row input{background:#20252c!important;color:#f4f6f8!important;border-color:#343c47!important}
+@media(max-width:760px){.category-settings-card{grid-column:auto}.category-manager-row{grid-template-columns:minmax(0,1fr) auto}}

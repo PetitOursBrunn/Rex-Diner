@@ -1,8 +1,8 @@
 {
   "name": "rexs-diner-pos-v8",
-  "version": "11.7.0",
+  "version": "11.8.0",
   "private": true,
-  "description": "Rex's Diner V11.7 avec mise à jour automatique anti-cache",
+  "description": "Rex's Diner V11.8 avec mise à jour automatique anti-cache",
   "scripts": {
     "start": "node server.js"
   },
