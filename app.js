@@ -391,7 +391,7 @@
 
   function openOrderConfirmation(method='Espèces'){
     if(!state.cart.length){toast('Le ticket est vide');return;}
-    const t=totals();
+    const t=calcTotals();
 
     state.pendingCheckoutMethod='Espèces';
     state.pendingCheckoutCurrency=state.paymentCurrency||'USD';
@@ -399,26 +399,31 @@
     const count=state.cart.reduce((s,i)=>s+Number(i.qty||0),0);
     $('#orderConfirmCount').textContent=String(count);
 
+    const usePesosForItems=state.pendingCheckoutCurrency==='MXN';
     $('#orderConfirmItems').innerHTML=state.cart.map(i=>`
       <div class="order-confirm-item">
         <div>
           <strong>${escapeHtml(i.name)}</strong>
-          <small>${i.qty} × ${money(i.price)}</small>
+          <small>${i.qty} × ${usePesosForItems?peso(toPesos(i.price)):money(i.price)}</small>
         </div>
-        <b>${money(i.price*i.qty)}</b>
+        <b>${usePesosForItems?peso(toPesos(i.price*i.qty)):money(i.price*i.qty)}</b>
       </div>`).join('');
 
-    $('#orderConfirmSubtotal').textContent=money(t.subtotal);
-
-    const discountValue=Math.max(0,Number(t.subtotal||0)-Number(t.total||0));
-    $('#orderConfirmDiscount').textContent=discountValue>0?`− ${money(discountValue)}`:money(0);
-
-    $('#orderConfirmTotal').textContent=money(t.total);
-
     const currency=state.pendingCheckoutCurrency;
+    const usePesos=currency==='MXN';
+
+    $('#orderConfirmSubtotal').textContent=usePesos?peso(toPesos(t.subtotal)):money(t.subtotal);
+
+    const discountValue=Math.max(0,Number(t.discount||0));
+    $('#orderConfirmDiscount').textContent=discountValue>0
+      ? `− ${usePesos?peso(toPesos(discountValue)):money(discountValue)}`
+      : (usePesos?peso(0):money(0));
+
+    $('#orderConfirmTotal').textContent=usePesos?peso(toPesos(t.total)):money(t.total);
+
     const paymentText=currency==='USD'
-      ? `Paiement en espèces • ${usd(t.total)} = ${peso(t.total*EXCHANGE_RATE)}`
-      : `Paiement en espèces • ${peso(t.total*EXCHANGE_RATE)}`;
+      ? `Paiement en espèces • ${money(t.total)} = ${peso(toPesos(t.total))}`
+      : `Paiement en espèces • ${peso(toPesos(t.total))}`;
 
     $('#orderConfirmPaymentText').textContent=paymentText;
     openDialog('orderConfirmDialog');
@@ -451,7 +456,7 @@
       const before=Number(data.cashDrawerPesos||0); data.cashDrawerPesos=before+creditedPesos;
       recordDrawerMovement('sale',creditedPesos,before,data.cashDrawerPesos,`Vente ${sale.id} • payée en ${currencyName(currency)}`,currency,paidTotal);
     }
-    data.sales.unshift(sale); save(); log('Vente',`${sale.id} • ${currencyAmount(paidTotal,currency)} • ${method} • ${currencyName(currency)}`); state.cart=[];state.orderNote='';state.discount=0;$('#orderNote').value='';$('#discountSelect').value='0';renderAll();showReceipt(sale); }
+    data.sales.unshift(sale); save(); log('Vente',`${sale.id} • ${currencyAmount(paidTotal,currency)} • ${method} • ${currencyName(currency)}`); state.cart=[];state.orderNote='';state.discount=0;$('#orderNote').value='';$('#discountSelect').value='0';renderAll();toast(`Vente ${sale.id} encaissée`); }
   function holdSale(){ if(!state.cart.length)return; data.heldSales.unshift({id:'ATT-'+String(Date.now()).slice(-5),date:nowISO(),employee:state.currentUser.name,note:state.orderNote,discount:state.discount,items:state.cart.map(i=>({...i}))}); save(); log('Vente en attente',`${data.heldSales[0].id} • ${state.cart.reduce((s,i)=>s+i.qty,0)} article(s)`); state.cart=[];state.orderNote='';state.discount=0;$('#orderNote').value='';$('#discountSelect').value='0';renderCart();toast('Commande mise en attente'); }
   function showReceipt(sale){
     const lines=sale.items.map(i=>`<div class="receipt-line"><span>${i.qty} × ${escapeHtml(i.name)}</span><b>${money(i.qty*i.price)}</b></div>`).join('');

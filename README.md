@@ -1,14 +1,17 @@
-# Rex's Diner — V11.5
+# Rex's Diner — V11.6
 
-## Corrections
+Correction du bouton Espèces.
 
-- Le paiement `Espèces` fonctionne à nouveau.
-- Le bouton `Carte` a été supprimé.
-- Une vente suit désormais ce flux :
-  1. cliquer sur `Espèces` ;
-  2. voir la liste complète de la commande ;
-  3. vérifier les quantités et le total ;
-  4. cliquer sur `Confirmer & encaisser` ;
-  5. la vente est enregistrée et le stock est déduit.
+Le problème venait de deux appels JavaScript inexistants dans la fenêtre de confirmation :
+- `totals()` au lieu de `calcTotals()`
+- `usd()` au lieu de `money()`
 
-Tout le reste reste identique à la version précédente.
+Flux corrigé :
+1. Ajouter des produits.
+2. Choisir Dollars ou Pesos.
+3. Cliquer sur Espèces.
+4. Vérifier la liste des produits, quantités et total.
+5. Cliquer sur Confirmer & encaisser.
+6. La vente est enregistrée, le stock est déduit et le fonds de caisse est crédité en pesos.
+
+Le bouton Carte reste supprimé. Tout le reste est inchangé.
