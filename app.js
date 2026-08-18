@@ -302,6 +302,36 @@
     toast(enabled?'Thème sombre activé':'Thème clair activé');
   }
 
+
+  const CLIENT_BUILD='11.7.0';
+  let buildCheckTimer=null;
+
+  async function checkForNewBuild(force=false){
+    try{
+      const res=await fetch('/api/build?t='+Date.now(),{
+        cache:'no-store',
+        headers:{'Cache-Control':'no-cache'}
+      });
+      if(!res.ok)return;
+      const info=await res.json();
+      if(info.build && info.build!==CLIENT_BUILD){
+        sessionStorage.setItem('rex_build_reload',info.build);
+        const url=new URL(window.location.href);
+        url.searchParams.set('_build',info.build);
+        window.location.replace(url.toString());
+        return;
+      }
+      const el=$('#buildVersion');
+      if(el)el.textContent=CLIENT_BUILD;
+    }catch{}
+  }
+
+  function startBuildWatcher(){
+    clearInterval(buildCheckTimer);
+    checkForNewBuild(true);
+    buildCheckTimer=setInterval(()=>checkForNewBuild(false),10000);
+  }
+
   function roleLevel(role){ return role==='Patron'?3:role==='Manager'?2:1; }
   function can(level){ return !!state.currentUser && roleLevel(state.currentUser.role)>=level; }
   function toast(msg){ const el=$('#toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toast.timer); toast.timer=setTimeout(()=>el.classList.remove('show'),1800); }
@@ -753,5 +783,5 @@ if($('#cashPayBtn')) $('#cashPayBtn').onclick=()=>openOrderConfirmation('Espèce
   const darkThemeToggle=$('#darkThemeToggle');
   if(darkThemeToggle) darkThemeToggle.onchange=e=>toggleTheme(e.target.checked);
 
-  applyTheme(getStoredTheme());renderLogin();renderPin();initRealtime();
+  applyTheme(getStoredTheme());renderLogin();renderPin();initRealtime();startBuildWatcher();
 })();

@@ -9,6 +9,7 @@ const ROOT = __dirname;
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, '.data');
 const DATA_FILE = path.join(DATA_DIR, 'rexs-diner-data.json');
 const PORT = Number(process.env.PORT || 8080);
+const BUILD_VERSION = '11.7.0';
 const ACCESS_USER = process.env.REXS_ACCESS_USER || 'rex';
 const ACCESS_PASSWORD = process.env.REXS_ACCESS_PASSWORD || '';
 const REQUIRE_AUTH = ACCESS_PASSWORD.length > 0;
@@ -144,9 +145,12 @@ function serveStatic(req, res) {
     res.writeHead(200, {
       'Content-Type': contentType(file),
       'Cache-Control': (file.endsWith('.html') || file.endsWith('.js') || file.endsWith('.css'))
-        ? 'no-store, no-cache, must-revalidate, max-age=0'
+        ? 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0'
         : 'public, max-age=3600',
-      ...(file.endsWith('.html') || file.endsWith('.js') || file.endsWith('.css') ? {'Pragma':'no-cache','Expires':'0'} : {})
+      'Pragma': (file.endsWith('.html') || file.endsWith('.js') || file.endsWith('.css')) ? 'no-cache' : '',
+      'Expires': (file.endsWith('.html') || file.endsWith('.js') || file.endsWith('.css')) ? '0' : '',
+      'Surrogate-Control': (file.endsWith('.html') || file.endsWith('.js') || file.endsWith('.css')) ? 'no-store' : '',
+      'X-Rex-Build': BUILD_VERSION
     });
     fs.createReadStream(file).pipe(res);
   });
@@ -154,6 +158,14 @@ function serveStatic(req, res) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
+
+  if (url.pathname === '/api/build') {
+    return sendJson(res, 200, {
+      build: BUILD_VERSION,
+      revision,
+      serverTime: Date.now()
+    });
+  }
 
   if (url.pathname === '/health') {
     return sendJson(res, 200, { ok:true, initialized:!!state, revision, clients:clients.size });

@@ -1,17 +1,21 @@
-# Rex's Diner — V11.6
+# Rex's Diner — V11.7.0
 
-Correction du bouton Espèces.
+Cette version corrige le problème où certains utilisateurs voyaient encore une ancienne version après un nouveau déploiement.
 
-Le problème venait de deux appels JavaScript inexistants dans la fenêtre de confirmation :
-- `totals()` au lieu de `calcTotals()`
-- `usd()` au lieu de `money()`
+## Protection anti-cache
+- `styles.css` et `app.js` portent un numéro de version dans leur URL.
+- HTML/CSS/JS sont servis avec `no-store` / `no-cache`.
+- le serveur expose `/api/build`.
+- le navigateur vérifie périodiquement la version réellement déployée.
+- si le serveur possède une nouvelle version, la page se recharge automatiquement avec une URL différente.
 
-Flux corrigé :
-1. Ajouter des produits.
-2. Choisir Dollars ou Pesos.
-3. Cliquer sur Espèces.
-4. Vérifier la liste des produits, quantités et total.
-5. Cliquer sur Confirmer & encaisser.
-6. La vente est enregistrée, le stock est déduit et le fonds de caisse est crédité en pesos.
+## Vérification
+Dans Réglages > Synchronisation, la version doit afficher :
+`11.7.0`
 
-Le bouton Carte reste supprimé. Tout le reste est inchangé.
+Si ton collègue voit une ancienne version, après déploiement de cette V11.7 :
+1. il ouvre le lien normalement ;
+2. la page vérifie `/api/build` ;
+3. si sa version est ancienne, elle se recharge automatiquement sur la nouvelle.
+
+Tout le reste reste identique à la V11.6.
