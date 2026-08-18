@@ -1,4 +1,4 @@
-# Rex's Diner — V11.9.0
+# Rex's Diner — V11.9.1
 
 Cette version corrige le problème où certains utilisateurs voyaient encore une ancienne version après un nouveau déploiement.
 
@@ -11,7 +11,7 @@ Cette version corrige le problème où certains utilisateurs voyaient encore une
 
 ## Vérification
 Dans Réglages > Synchronisation, la version doit afficher :
-`11.9.0`
+`11.9.1`
 
 Si ton collègue voit une ancienne version, après déploiement de cette V11.8 :
 1. il ouvre le lien normalement ;
@@ -20,7 +20,7 @@ Si ton collègue voit une ancienne version, après déploiement de cette V11.8 :
 
 Tout le reste reste identique à la V11.6.
 
-## Nouveautés V11.9.0
+## Nouveautés V11.9.1
 - Réorganisation manuelle des matières premières avec les flèches ↑ / ↓.
 - Tri alphabétique A → Z des matières premières.
 - Renommage des catégories de produits dans Réglages > Catégories des produits.
@@ -28,7 +28,7 @@ Tout le reste reste identique à la V11.6.
 - Ordres et noms synchronisés et persistants avec les données du serveur.
 
 
-## Nouveautés V11.9.0 — écran vertical
+## Nouveautés V11.9.1 — écran vertical
 - La caisse détecte l’orientation portrait et passe automatiquement sur une seule colonne.
 - La partie ticket/paiement n’est plus coupée sur les écrans verticaux.
 - Le ticket perd son positionnement fixe en portrait pour rester entièrement accessible au défilement.

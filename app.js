@@ -315,7 +315,7 @@
   }
 
 
-  const CLIENT_BUILD='11.9.0';
+  const CLIENT_BUILD='11.9.1';
   let buildCheckTimer=null;
 
   async function checkForNewBuild(force=false){
