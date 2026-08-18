@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#12100f" />
+  <title>Rex's Diner — Caisse & Gestion</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="loginView" class="login-view">
+    <section class="login-visual" aria-hidden="true">
+      <img src="assets/rexs-exterior.png" alt="" />
+      <div class="login-overlay"></div>
+      <div class="login-visual-copy">
+        <span class="neon-pill">REX'S DINER</span>
+        <h1>La caisse du diner,<br>pensée pour le service.</h1>
+        <p>Rapide à utiliser, claire sur tablette et suffisamment complète pour suivre les stocks, les ventes et l'équipe.</p>
+      </div>
+    </section>
+
+    <section class="login-panel">
+      <div class="login-card">
+        <div class="brand-lockup">
+          <div class="brand-round">R</div>
+          <div><strong>REX'S DINER</strong><span>POINT OF SALE</span></div>
+        </div>
+
+        <div class="login-title">
+          <span class="kicker">CONNEXION EMPLOYÉ</span>
+          <h2>Bienvenue au Rex's</h2>
+          <p>Sélectionne ton profil et saisis ton code PIN.</p>
+        </div>
+
+        <div id="loginUsers" class="login-users"></div>
+
+        <div id="selectedLoginUser" class="selected-user"></div>
+
+        <div class="pin-display" id="pinDisplay" aria-label="Code PIN">
+          <i></i><i></i><i></i><i></i>
+        </div>
+
+        <div class="pin-pad" id="pinPad">
+          <button type="button" data-pin="1">1</button><button type="button" data-pin="2">2</button><button type="button" data-pin="3">3</button>
+          <button type="button" data-pin="4">4</button><button type="button" data-pin="5">5</button><button type="button" data-pin="6">6</button>
+          <button type="button" data-pin="7">7</button><button type="button" data-pin="8">8</button><button type="button" data-pin="9">9</button>
+          <button type="button" id="pinClear" class="pin-secondary">Effacer</button><button type="button" data-pin="0">0</button><button type="button" id="pinBack" class="pin-secondary">⌫</button>
+        </div>
+
+        <div class="demo-codes">
+          <span>Codes démo</span>
+          <b>Patron 2580</b><b>Manager 1470</b><b>Employé 1234</b>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="app" class="app hidden">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-round mini">R</div>
+        <div><strong>REX'S</strong><span>DINER</span></div>
+      </div>
+
+      <nav id="nav" class="nav">
+        <button type="button" data-view="dashboard" data-min-role="1"><span>⌂</span><b>Accueil</b></button>
+        <button type="button" data-view="pos" data-min-role="1"><span>▣</span><b>Caisse</b></button>
+        <button type="button" data-view="stock" data-min-role="2"><span>▦</span><b>Stocks</b></button>
+        <button type="button" data-view="supplies" data-min-role="2"><span>◈</span><b>Matières</b></button>
+        <button type="button" data-view="sales" data-min-role="2"><span>↗</span><b>Ventes</b></button>
+        <button type="button" data-view="drawer" data-min-role="2"><span>◫</span><b>Fonds de caisse</b></button>
+        <button type="button" data-view="employees" data-min-role="3"><span>♟</span><b>Employés</b></button>
+        <button type="button" data-view="journal" data-min-role="2"><span>≡</span><b>Journal</b></button>
+        <button type="button" data-view="settings" data-min-role="3"><span>⚙</span><b>Réglages</b></button>
+      </nav>
+
+      <div class="sidebar-photo">
+        <img src="assets/rexs-interior.png" alt="Intérieur du Rex's Diner" />
+        <div><span>Service</span><strong>Ouvert</strong></div>
+      </div>
+      <div class="sidebar-clock"><i></i><span id="clock">--:--</span></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <span class="kicker" id="viewKicker">TABLEAU DE BORD</span>
+          <h1 id="viewTitle">Accueil</h1>
+        </div>
+        <div class="topbar-actions">
+          <div id="realtimeStatus" class="realtime-status connecting" title="État de la synchronisation"><i></i><span>Connexion…</span></div>
+          <button type="button" id="quickNewSale" class="button button-primary compact">＋ Nouvelle vente</button>
+          <button type="button" id="userMenuButton" class="user-chip" aria-expanded="false">
+            <span id="headerInitials" class="avatar">JT</span>
+            <span><b id="headerName">Jackson Teller</b><small id="headerRole">Patron</small></span>
+            <em>⌄</em>
+          </button>
+          <div id="userMenu" class="user-menu hidden">
+            <button type="button" id="lockButton">🔒 Verrouiller la caisse</button>
+            <button type="button" id="logoutButton">↪ Déconnexion</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="content">
+        <section id="view-dashboard" class="view active">
+          <div class="hero-card">
+            <img src="assets/rexs-interior.png" alt="Salle du Rex's Diner" />
+            <div class="hero-shade"></div>
+            <div class="hero-copy">
+              <span class="hero-tag">REX'S DINER • SERVICE EN COURS</span>
+              <h2 id="dashboardGreeting">Bon service !</h2>
+              <p>Tout ce qu'il faut pour encaisser, contrôler les stocks et suivre l'activité du restaurant.</p>
+              <button type="button" class="button button-light" id="heroOpenPos">Ouvrir la caisse →</button>
+            </div>
+          </div>
+
+          <div class="metrics" id="dashboardMetrics"></div>
+
+          <div class="dashboard-grid">
+            <article class="panel">
+              <div class="panel-heading"><div><span class="kicker">RACCOURCIS</span><h3>Actions rapides</h3></div></div>
+              <div class="quick-actions" id="dashboardActions"></div>
+            </article>
+            <article class="panel image-panel">
+              <img src="assets/rexs-kitchen.png" alt="Cuisine du Rex's Diner" />
+              <div class="image-panel-copy"><span>CUISINE</span><strong>Stocks prêts pour le service</strong><small id="stockHealthText"></small></div>
+            </article>
+          </div>
+
+          <div class="cash-overview panel" id="cashOverview">
+            <div class="panel-heading"><div><span class="kicker">FONDS DE CAISSE</span><h3>Argent disponible</h3></div><button type="button" class="text-button" data-go="drawer">Gérer</button></div>
+            <div id="cashOverviewBalances" class="cash-balance-grid"></div>
+            <div class="exchange-note">Taux fixe du serveur : <strong>1 $ = 23 pesos</strong></div>
+          </div>
+
+          <div class="dashboard-grid lower">
+            <article class="panel">
+              <div class="panel-heading"><div><span class="kicker">DERNIÈRES VENTES</span><h3>Activité récente</h3></div><button type="button" class="text-button" data-go="sales">Voir tout</button></div>
+              <div id="recentSales" class="compact-list"></div>
+            </article>
+            <article class="panel">
+              <div class="panel-heading"><div><span class="kicker">ALERTES</span><h3>À surveiller</h3></div><button type="button" class="text-button" data-go="stock">Voir le stock</button></div>
+              <div id="stockAlerts" class="compact-list"></div>
+            </article>
+          </div>
+        </section>
+
+        <section id="view-pos" class="view">
+          <div class="pos-shell">
+            <div class="catalog panel">
+              <div class="catalog-toolbar">
+                <label class="search"><span>⌕</span><input id="productSearch" placeholder="Rechercher un produit..." /></label>
+                <div id="categoryTabs" class="tabs"></div>
+              </div>
+              <div id="productGrid" class="product-grid"></div>
+            </div>
+
+            <aside class="ticket panel">
+              <div class="ticket-head">
+                <div><span class="kicker">COMMANDE EN COURS</span><h3>Ticket <small id="ticketItemCount">0 article</small></h3></div>
+                <button type="button" id="clearCart" class="icon-text-button danger">Vider</button>
+              </div>
+
+              <label class="order-note"><span>Note de commande</span><input id="orderNote" maxlength="90" placeholder="Ex. Sans oignons, à emporter..." /></label>
+
+              <div id="cartItems" class="cart-items"></div>
+
+              <div class="discount-row">
+                <label>Remise
+                  <select id="discountSelect">
+                    <option value="0">Aucune</option>
+                    <option value="5">5 %</option>
+                    <option value="10">10 %</option>
+                    <option value="15">15 %</option>
+                    <option value="20">20 %</option>
+                  </select>
+                </label>
+                <button type="button" id="holdSale" class="button button-soft compact">Mettre en attente</button>
+              </div>
+
+              <div class="currency-picker-wrap">
+                <span>Devise de paiement</span>
+                <div class="currency-picker" id="currencyPicker">
+                  <button type="button" class="active" data-currency="USD"><b>$</b><span>Dollars</span></button>
+                  <button type="button" data-currency="MXN"><b>₱</b><span>Pesos</span></button>
+                </div>
+                <small>Conversion automatique : 1 $ = 23 pesos</small>
+              </div>
+
+              <div class="totals">
+                <div><span>Sous-total</span><b id="subtotal">$0.00</b></div>
+                <div><span>Remise</span><b id="discountAmount">$0.00</b></div>
+                <div><span>TVA incluse</span><b id="taxAmount">$0.00</b></div>
+                <div class="grand"><span>Total</span><b id="total">$0.00</b></div>
+                <div class="converted-total"><span>Équivalent</span><b id="convertedTotal">0 pesos</b></div>
+              </div>
+
+              <div class="payment-buttons">
+                <button type="button" class="button button-dark payment" data-method="Espèces">💵 Espèces</button>
+                <button type="button" class="button button-primary payment" data-method="Carte">💳 Carte</button>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section id="view-stock" class="view">
+          <div class="section-head">
+            <div><span class="kicker">INVENTAIRE</span><h2>Gestion des stocks</h2><p>Ajoute, retire ou corrige les quantités et gère ton catalogue.</p></div>
+            <button type="button" id="addProduct" class="button button-primary">＋ Ajouter un produit</button>
+          </div>
+          <div id="stockMetrics" class="metrics"></div>
+          <div class="panel table-panel">
+            <div class="table-toolbar">
+              <label class="search"><span>⌕</span><input id="stockSearch" placeholder="Rechercher dans le stock..." /></label>
+              <select id="stockFilter"><option value="all">Tous les produits</option><option value="low">Stock faible</option><option value="out">Ruptures</option></select>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Produit</th><th>Catégorie</th><th>Prix</th><th>Stock</th><th>État</th><th class="right">Actions</th></tr></thead><tbody id="stockTable"></tbody></table></div>
+          </div>
+        </section>
+
+
+        <section id="view-supplies" class="view">
+          <div class="section-head">
+            <div>
+              <span class="kicker">APPROVISIONNEMENT</span>
+              <h2>Commandes de matières premières</h2>
+              <p>Crée ton catalogue fournisseur, prépare une commande et règle-la directement en pesos depuis le solde global.</p>
+            </div>
+            <div class="head-actions">
+              <button type="button" id="addMaterial" class="button button-soft">＋ Nouvelle matière</button>
+              <button type="button" id="openSupplyOrder" class="button button-primary">🛒 Préparer une commande</button>
+            </div>
+          </div>
+
+          <div id="supplyMetrics" class="metrics"></div>
+
+          <div class="supply-layout">
+            <article class="panel supply-catalog-panel">
+              <div class="panel-heading">
+                <div><span class="kicker">CATALOGUE FOURNISSEURS</span><h3>Matières disponibles</h3></div>
+              </div>
+              <div class="table-toolbar">
+                <label class="search"><span>⌕</span><input id="materialSearch" placeholder="Matière, fournisseur, unité..." /></label>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Matière</th><th>Fournisseur</th><th>Unité</th><th>Prix / unité</th><th class="right">Actions</th></tr></thead>
+                  <tbody id="materialsTable"></tbody>
+                </table>
+              </div>
+            </article>
+
+            <aside class="panel supply-draft-panel">
+              <div class="panel-heading">
+                <div><span class="kicker">COMMANDE EN PRÉPARATION</span><h3>Panier fournisseur</h3></div>
+                <button type="button" id="clearSupplyDraft" class="text-button danger-text">Vider</button>
+              </div>
+              <div id="supplyDraftList" class="supply-draft-list"></div>
+              <label class="supply-note">Note / référence
+                <input id="supplyOrderNote" maxlength="100" placeholder="Ex. Livraison service du soir..." />
+              </label>
+              <div class="supply-total-box">
+                <div><span>Total commande</span><strong id="supplyDraftTotal">0 pesos</strong></div>
+                <small id="supplyBalanceAfter">Solde après commande : 0 pesos</small>
+              </div>
+              <button type="button" id="submitSupplyOrder" class="button button-primary full-width">Commander & payer en pesos</button>
+            </aside>
+          </div>
+
+          <div class="panel table-panel supply-orders-panel">
+            <div class="panel-heading">
+              <div><span class="kicker">HISTORIQUE</span><h3>Commandes passées</h3></div>
+              <button type="button" id="exportSupplyOrders" class="text-button">Exporter CSV</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Date</th><th>Commande</th><th>Employé</th><th>Articles</th><th>Total</th><th>Solde après</th><th>Note</th></tr></thead>
+                <tbody id="supplyOrdersTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section id="view-sales" class="view">
+          <div class="section-head">
+            <div><span class="kicker">ACTIVITÉ</span><h2>Ventes</h2><p>Historique détaillé de toutes les commandes encaissées.</p></div>
+            <div class="head-actions"><button type="button" id="exportSales" class="button button-soft">Exporter CSV</button><button type="button" id="clearSales" class="button button-danger patron-only">Effacer</button></div>
+          </div>
+          <div id="salesMetrics" class="metrics"></div>
+          <div class="panel table-panel">
+            <div class="table-toolbar"><label class="search"><span>⌕</span><input id="salesSearch" placeholder="Ticket, employé, paiement..." /></label></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Employé</th><th>Ticket</th><th>Articles</th><th>Paiement</th><th>Total</th><th></th></tr></thead><tbody id="salesTable"></tbody></table></div>
+          </div>
+        </section>
+
+        <section id="view-drawer" class="view">
+          <div class="section-head">
+            <div><span class="kicker">TRÉSORERIE</span><h2>Fonds de caisse</h2><p>Un seul solde global en pesos. Les paiements en dollars sont convertis automatiquement au taux ×23.</p></div>
+            <button type="button" id="adjustDrawer" class="button button-primary">＋ Ajuster le fonds</button>
+          </div>
+          <div id="drawerMetrics" class="metrics"></div>
+          <div class="drawer-grid">
+            <article class="panel drawer-hero">
+              <img src="assets/rexs-exterior.png" alt="Rex's Diner" />
+              <div class="drawer-hero-overlay"></div>
+              <div class="drawer-hero-copy"><span class="kicker light">CAISSE PHYSIQUE</span><h3 id="drawerCombinedValue">0 pesos</h3><p>Solde global unique en pesos. Les ventes en dollars sont automatiquement converties ×23 avant d'être ajoutées.</p></div>
+            </article>
+            <article class="panel">
+              <div class="panel-heading"><div><span class="kicker">MOUVEMENTS</span><h3>Derniers ajustements</h3></div></div>
+              <div id="drawerHistory" class="compact-list"></div>
+            </article>
+          </div>
+          <div class="panel table-panel drawer-log-panel">
+            <div class="panel-heading"><div><span class="kicker">HISTORIQUE</span><h3>Mouvements du fonds</h3></div></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Employé</th><th>Type</th><th>Montant (pesos)</th><th>Avant</th><th>Après</th><th>Motif</th></tr></thead><tbody id="drawerTable"></tbody></table></div>
+          </div>
+        </section>
+
+        <section id="view-employees" class="view">
+          <div class="section-head">
+            <div><span class="kicker">ÉQUIPE</span><h2>Employés & permissions</h2><p>Crée les accès et choisis précisément qui peut faire quoi.</p></div>
+            <button type="button" id="addEmployee" class="button button-primary">＋ Ajouter un employé</button>
+          </div>
+          <div class="role-strip"><div><b>Employé</b><span>Caisse</span></div><div><b>Manager</b><span>Caisse, stocks, ventes, journal</span></div><div><b>Patron</b><span>Accès complet</span></div></div>
+          <div class="panel table-panel"><div class="table-wrap"><table><thead><tr><th>Employé</th><th>Rôle</th><th>PIN</th><th>Statut</th><th>Dernière connexion</th><th class="right">Actions</th></tr></thead><tbody id="employeeTable"></tbody></table></div></div>
+        </section>
+
+        <section id="view-journal" class="view">
+          <div class="section-head"><div><span class="kicker">SÉCURITÉ</span><h2>Journal d'activité</h2><p>Trace les opérations importantes effectuées dans le système.</p></div><button type="button" id="clearJournal" class="button button-danger patron-only">Vider le journal</button></div>
+          <div class="panel table-panel"><div class="table-toolbar"><label class="search"><span>⌕</span><input id="journalSearch" placeholder="Rechercher une action..." /></label></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Employé</th><th>Action</th><th>Détail</th></tr></thead><tbody id="journalTable"></tbody></table></div></div>
+        </section>
+
+        <section id="view-settings" class="view">
+          <div class="section-head"><div><span class="kicker">CONFIGURATION</span><h2>Réglages</h2><p>Paramètres généraux et sauvegarde des données.</p></div></div>
+          <div class="settings-grid">
+            <article class="panel settings-card"><span class="kicker">RESTAURANT</span><h3>Informations</h3><label>Nom du restaurant<input value="Rex's Diner" disabled /></label><label>Devise de référence<input value="Dollar ($)" disabled /></label><label>Taux de change<input value="1 $ = 23 pesos" disabled /></label></article>
+            <article class="panel settings-card"><span class="kicker">VENTES & STOCK</span><h3>Paramètres</h3><label>Seuil de stock faible<input id="lowStockThreshold" type="number" min="1" max="999" /></label><label>TVA indicative (%)<input id="taxRate" type="number" min="0" max="100" step="0.1" /></label><button type="button" id="saveSettings" class="button button-primary">Enregistrer</button></article>
+            <article class="panel settings-card"><span class="kicker">SAUVEGARDE</span><h3>Données</h3><p>Exporte toutes les données de la caisse pour conserver une sauvegarde locale.</p><div class="stack-buttons"><button type="button" id="exportData" class="button button-soft">Télécharger la sauvegarde</button><button type="button" id="importDataButton" class="button button-soft">Importer une sauvegarde</button><input id="importDataInput" type="file" accept="application/json" hidden /></div></article>
+            <article class="panel settings-card danger-zone"><span class="kicker">ZONE SENSIBLE</span><h3>Réinitialisation</h3><p>Supprime les données locales et remet l'application à son état de démonstration.</p><button type="button" id="resetApp" class="button button-danger">Réinitialiser l'application</button></article>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status"></div>
+
+  <div id="modalBackdrop" class="modal-backdrop hidden"></div>
+
+  <dialog id="productDialog" class="dialog">
+    <form method="dialog" id="productForm">
+      <header><div><span class="kicker">CATALOGUE</span><h3 id="productDialogTitle">Ajouter un produit</h3></div><button type="button" class="dialog-close" data-close-dialog="productDialog">×</button></header>
+      <input id="productId" type="hidden" />
+      <div class="form-grid">
+        <label>Nom<input id="productName" required maxlength="50" /></label>
+        <label>Catégorie<select id="productCategory"><option>Burgers</option><option>Sides</option><option>Boissons</option><option>Desserts</option><option>Autres</option></select></label>
+        <label>Prix ($)<input id="productPrice" type="number" min="0" step="0.10" required /></label>
+        <label>Stock<input id="productStock" type="number" min="0" step="1" required /></label>
+        <label>Emoji / icône<input id="productIcon" maxlength="4" placeholder="🍔" /></label>
+      </div>
+      <footer><button type="button" class="button button-soft" data-close-dialog="productDialog">Annuler</button><button type="submit" class="button button-primary">Enregistrer</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="stockDialog" class="dialog small-dialog">
+    <form method="dialog" id="stockForm">
+      <header><div><span class="kicker">MOUVEMENT DE STOCK</span><h3>Modifier le stock</h3></div><button type="button" class="dialog-close" data-close-dialog="stockDialog">×</button></header>
+      <div id="stockProductSummary" class="summary-box"></div>
+      <div class="mode-tabs" id="stockModeTabs"><button type="button" class="active" data-stock-mode="add">＋ Ajouter</button><button type="button" data-stock-mode="remove">− Retirer</button><button type="button" data-stock-mode="set">= Définir</button></div>
+      <label>Quantité<input id="stockQuantity" type="number" min="0" step="1" value="1" required /></label>
+      <div class="quick-qty"><button type="button" data-quick="1">1</button><button type="button" data-quick="5">5</button><button type="button" data-quick="10">10</button><button type="button" data-quick="25">25</button></div>
+      <footer><button type="button" class="button button-soft" data-close-dialog="stockDialog">Annuler</button><button type="submit" class="button button-primary">Valider</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="employeeDialog" class="dialog small-dialog">
+    <form method="dialog" id="employeeForm">
+      <header><div><span class="kicker">ÉQUIPE</span><h3 id="employeeDialogTitle">Ajouter un employé</h3></div><button type="button" class="dialog-close" data-close-dialog="employeeDialog">×</button></header>
+      <input id="employeeId" type="hidden" />
+      <div class="form-stack">
+        <label>Nom complet<input id="employeeName" required maxlength="50" /></label>
+        <label>Initiales<input id="employeeInitials" required maxlength="3" /></label>
+        <label>Rôle<select id="employeeRole"><option>Employé</option><option>Manager</option><option>Patron</option></select></label>
+        <label>Code PIN (4 chiffres)<input id="employeePin" inputmode="numeric" maxlength="4" pattern="\d{4}" required /></label>
+        <label class="switch-line"><input id="employeeActive" type="checkbox" checked /><span>Compte actif</span></label>
+      </div>
+      <footer><button type="button" class="button button-soft" data-close-dialog="employeeDialog">Annuler</button><button type="submit" class="button button-primary">Enregistrer</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="drawerDialog" class="dialog small-dialog">
+    <form method="dialog" id="drawerForm">
+      <header><div><span class="kicker">FONDS DE CAISSE</span><h3>Ajuster l'argent disponible</h3></div><button type="button" class="dialog-close" data-close-dialog="drawerDialog">×</button></header>
+      <div id="drawerCurrentSummary" class="summary-box"></div>
+      <div class="mode-tabs" id="drawerModeTabs"><button type="button" class="active" data-drawer-mode="add">＋ Ajouter</button><button type="button" data-drawer-mode="remove">− Retirer</button><button type="button" data-drawer-mode="set">= Définir</button></div>
+      <label>Montant en pesos<input id="drawerAmount" type="number" min="0" step="0.01" value="0" required /></label>
+      <label>Motif / note<input id="drawerReason" maxlength="80" placeholder="Ex. Fonds de départ, retrait patron..." /></label>
+      <footer><button type="button" class="button button-soft" data-close-dialog="drawerDialog">Annuler</button><button type="submit" class="button button-primary">Valider l'ajustement</button></footer>
+    </form>
+  </dialog>
+
+
+  <dialog id="materialDialog" class="dialog small-dialog">
+    <form method="dialog" id="materialForm">
+      <header>
+        <div><span class="kicker">MATIÈRE PREMIÈRE</span><h3 id="materialDialogTitle">Ajouter une matière</h3></div>
+        <button type="button" class="dialog-close" data-close-dialog="materialDialog">×</button>
+      </header>
+      <input id="materialId" type="hidden" />
+      <div class="form-stack">
+        <label>Nom de la matière<input id="materialName" required maxlength="50" placeholder="Ex. Viande hachée" /></label>
+        <label>Fournisseur<input id="materialSupplier" maxlength="50" placeholder="Ex. Los Santos Food Supply" /></label>
+        <label>Unité<select id="materialUnit"><option>unité</option><option>kg</option><option>litre</option><option>carton</option><option>caisse</option><option>sac</option><option>lot</option></select></label>
+        <label>Prix par unité (pesos)<input id="materialPrice" type="number" min="0" step="0.01" required /></label>
+      </div>
+      <footer>
+        <button type="button" class="button button-soft" data-close-dialog="materialDialog">Annuler</button>
+        <button type="submit" class="button button-primary">Enregistrer</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="receiptDialog" class="dialog receipt-dialog">
+    <div id="receiptContent"></div>
+    <footer><button type="button" id="printReceipt" class="button button-soft">Imprimer</button><button type="button" class="button button-primary" data-close-dialog="receiptDialog">Fermer</button></footer>
+  </dialog>
+
+  <dialog id="confirmDialog" class="dialog confirm-dialog">
+    <div class="confirm-icon">!</div><h3 id="confirmTitle">Confirmation</h3><p id="confirmText"></p>
+    <footer><button type="button" class="button button-soft" data-close-dialog="confirmDialog">Annuler</button><button type="button" id="confirmButton" class="button button-danger">Confirmer</button></footer>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>

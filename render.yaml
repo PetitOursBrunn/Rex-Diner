@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: rexs-diner
+    runtime: node
+    plan: starter
+    buildCommand: ""
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: DATA_DIR
+        value: /var/data
+      - key: REXS_ACCESS_USER
+        value: rex
+      - key: REXS_ACCESS_PASSWORD
+        sync: false
+    disk:
+      name: rexs-diner-data
+      mountPath: /var/data
+      sizeGB: 1
