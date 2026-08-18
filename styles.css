@@ -47,3 +47,84 @@
 
 /* V10 — synchronisation hybride SSE + polling */
 .realtime-status.online{min-width:132px;justify-content:center}
+
+
+/* V11 — thème sombre */
+.theme-settings{background:linear-gradient(135deg,#fff 0,#faf7f2 100%)}
+.theme-settings p{color:var(--muted);font-size:10px;line-height:1.5}
+.theme-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.theme-toggle-row strong{display:block;font-size:11px}.theme-toggle-row small{display:block;color:var(--muted);font-size:8px;margin-top:3px}
+.switch{position:relative;width:48px;height:26px;flex:none}.switch input{opacity:0;width:0;height:0}.slider{position:absolute;inset:0;background:#d9d3cc;border-radius:99px;transition:.2s}.slider:before{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;box-shadow:0 2px 7px rgba(0,0,0,.18);transition:.2s}.switch input:checked+.slider{background:#26201c}.switch input:checked+.slider:before{transform:translateX(22px)}
+
+html.dark-theme{
+  --bg:#12100e;
+  --surface:#1b1815;
+  --surface-2:#211d19;
+  --ink:#f3eee8;
+  --muted:#aaa098;
+  --line:#342e29;
+  --red:#cf4d4d;
+  --red2:#a92f2f;
+  --cream:#d8bf8b;
+  --green:#55b883;
+  --orange:#d49a42;
+  --purple:#9284d0;
+  --shadow:0 16px 42px rgba(0,0,0,.28)
+}
+html.dark-theme body{background:var(--bg);color:var(--ink)}
+html.dark-theme .topbar,
+html.dark-theme .workspace-card,
+html.dark-theme .checkout-card,
+html.dark-theme .inventory-card,
+html.dark-theme .settings-card,
+html.dark-theme .panel,
+html.dark-theme .metric-card,
+html.dark-theme dialog,
+html.dark-theme .employee-chip,
+html.dark-theme .theme-toggle-row,
+html.dark-theme .search-box,
+html.dark-theme input,
+html.dark-theme select,
+html.dark-theme textarea,
+html.dark-theme .category-tabs button,
+html.dark-theme .movement-tab,
+html.dark-theme .table-action,
+html.dark-theme .icon-action,
+html.dark-theme .quick-qty button,
+html.dark-theme .supply-draft-item,
+html.dark-theme .sync-info-grid>div{background:#1b1815;color:var(--ink);border-color:var(--line)}
+html.dark-theme .topbar{background:rgba(27,24,21,.94)}
+html.dark-theme th{background:#211d19;color:var(--muted)}
+html.dark-theme td{border-color:#302a25}
+html.dark-theme .product-card{background:#1e1a17;border-color:var(--line);color:var(--ink)}
+html.dark-theme .product-card:hover{border-color:#4b4037}
+html.dark-theme .empty-icon,
+html.dark-theme .metric-icon,
+html.dark-theme .table-icon,
+html.dark-theme .employee-small-avatar,
+html.dark-theme .qty-control,
+html.dark-theme .stock-product-summary{background:#24201c}
+html.dark-theme .btn-soft{background:#26211d;color:#eee5dc;border-color:#3a332d}
+html.dark-theme .theme-settings{background:linear-gradient(135deg,#1b1815 0,#211d19 100%)}
+html.dark-theme .sync-settings{background:linear-gradient(135deg,#1b1815 0,#18201c 100%);border-color:#2c4437}
+html.dark-theme .danger-zone,
+html.dark-theme .danger-card{background:#221616;border-color:#523030}
+html.dark-theme .login-card{background:#1b1815;color:var(--ink)}
+html.dark-theme .login-user{background:#211d19;border-color:var(--line)}
+html.dark-theme .pin-pad button,
+html.dark-theme .user-selector button{background:#211d19;color:var(--ink);border-color:var(--line)}
+html.dark-theme .modal-card{background:#1b1815;color:var(--ink)}
+html.dark-theme .supply-total-box{background:#0e0d0c}
+html.dark-theme .realtime-status{background:#211d19}
+html.dark-theme .realtime-status.online{background:#14251d;border-color:#274b38}
+html.dark-theme .realtime-status.connecting{background:#2a2213;border-color:#5e4b22}
+html.dark-theme .realtime-status.offline{background:#2a1717;border-color:#5a2a2a}
+
+/* V11 — ajout manuel de dollars */
+.button-dollar{background:linear-gradient(135deg,#167a50,#0f5f3d);color:#fff;border:0}
+.button-dollar:hover{filter:brightness(1.06)}
+.currency-conversion-card{padding:12px;border:1px solid #cfe7d9;background:#eef8f2;border-radius:12px;margin-bottom:14px}
+.currency-conversion-card>div{display:flex;justify-content:space-between;gap:12px;align-items:center}.currency-conversion-card span{font-size:9px;color:#47745f}.currency-conversion-card strong{font-size:13px;color:#1d6848}.currency-conversion-card small{display:block;color:#62806f;font-size:8px;line-height:1.45;margin-top:5px}
+.conversion-preview{display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line)}.conversion-preview span{font-size:9px;color:var(--muted)}.conversion-preview strong{font-size:14px}
+.drawer-dollar-shortcut{display:flex;justify-content:flex-end;margin-bottom:12px}
+html.dark-theme .currency-conversion-card{background:#14251d;border-color:#294b39}.dark-theme .currency-conversion-card span{color:#8fb9a3}.dark-theme .currency-conversion-card strong{color:#70d29c}.dark-theme .currency-conversion-card small{color:#8aaa99}

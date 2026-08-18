@@ -3,6 +3,7 @@
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
   const EXCHANGE_RATE=23;
+  const THEME_KEY='rexs_diner_theme';
   const money = n => '$'+new Intl.NumberFormat('fr-BE',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(n)||0);
   const peso = n => new Intl.NumberFormat('fr-BE',{maximumFractionDigits:2}).format(Number(n)||0)+' pesos';
   const toPesos = usd => (Number(usd)||0)*EXCHANGE_RATE;
@@ -282,6 +283,20 @@
     refreshSyncBadge();
   });
 
+
+  function getStoredTheme(){ return localStorage.getItem(THEME_KEY)||'light'; }
+  function applyTheme(theme){
+    const dark=theme==='dark';
+    document.documentElement.classList.toggle('dark-theme',dark);
+    const toggle=$('#darkThemeToggle');
+    if(toggle)toggle.checked=dark;
+    localStorage.setItem(THEME_KEY,dark?'dark':'light');
+  }
+  function toggleTheme(enabled){
+    applyTheme(enabled?'dark':'light');
+    toast(enabled?'Thème sombre activé':'Thème clair activé');
+  }
+
   function roleLevel(role){ return role==='Patron'?3:role==='Manager'?2:1; }
   function can(level){ return !!state.currentUser && roleLevel(state.currentUser.role)>=level; }
   function toast(msg){ const el=$('#toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toast.timer); toast.timer=setTimeout(()=>el.classList.remove('show'),1800); }
@@ -550,6 +565,37 @@
     data.drawerMovements.unshift({id:Date.now()+Math.random(),date:nowISO(),employee:state.currentUser?.name||'Système',currency:'MXN',type,amount:Number(amount)||0,before:Number(before)||0,after:Number(after)||0,reason:reason||'',originalCurrency,originalAmount:originalAmount==null?Number(amount)||0:Number(originalAmount)||0});
     data.drawerMovements=data.drawerMovements.slice(0,500);
   }
+
+  function openDollarDrawerDialog(){
+    if(!can(2)){toast('Accès refusé');return;}
+    $('#drawerDollarAmount').value='';
+    $('#drawerDollarReason').value='';
+    $('#drawerDollarPreview').textContent=peso(0);
+    openDialog('dollarDrawerDialog');
+    setTimeout(()=>$('#drawerDollarAmount').focus(),50);
+  }
+  function updateDollarPreview(){
+    const dollars=Math.max(0,Number($('#drawerDollarAmount').value)||0);
+    $('#drawerDollarPreview').textContent=peso(dollars*EXCHANGE_RATE);
+  }
+  function addDollarsToDrawer(e){
+    e.preventDefault();
+    if(!can(2)){toast('Accès refusé');return;}
+    const dollars=Math.max(0,Number($('#drawerDollarAmount').value)||0);
+    if(dollars<=0){toast('Indique un montant en dollars');return;}
+    const pesos=dollars*EXCHANGE_RATE;
+    const before=Number(data.cashDrawerPesos||0);
+    const after=before+pesos;
+    const reason=$('#drawerDollarReason').value.trim()||'Ajout manuel de dollars';
+    data.cashDrawerPesos=after;
+    recordDrawerMovement('add_dollars',pesos,before,after,reason,'USD',dollars);
+    save();
+    log('Fonds de caisse',`${dollars.toFixed(2)} $ convertis en ${peso(pesos)} • ${reason}`);
+    closeDialog('dollarDrawerDialog');
+    renderAll();
+    toast(`${dollars.toFixed(2)} $ ajoutés → ${peso(pesos)}`);
+  }
+
   function renderDrawer(){
     if(!$('#drawerMetrics'))return;
     const usdEquivalent=toDollars(data.cashDrawerPesos);
@@ -560,7 +606,7 @@
     $('#drawerTable').innerHTML=data.drawerMovements.length?data.drawerMovements.map(m=>`<tr><td>${formatDate(m.date)}</td><td>${escapeHtml(m.employee)}</td><td>${movementLabel(m.type)}</td><td class="${movementClass(m.type)}">${movementPrefix(m.type)}${peso(m.amount)}</td><td>${peso(m.before)}</td><td><b>${peso(m.after)}</b></td><td>${escapeHtml(m.reason||'—')}</td></tr>`).join(''):'<tr><td colspan="7" class="empty-table">Aucun mouvement enregistré.</td></tr>';
     renderCashOverview();
   }
-  function movementLabel(type){return type==='add'?'Ajout':type==='remove'?'Retrait':type==='set'?'Correction':type==='purchase'?'Achat matières':'Vente espèces';}
+  function movementLabel(type){return type==='add'?'Ajout':type==='add_dollars'?'Ajout dollars':type==='remove'?'Retrait':type==='set'?'Correction':type==='purchase'?'Achat matières':'Vente espèces';}
   function movementClass(type){return (type==='remove'||type==='purchase')?'cash-movement-negative':type==='set'?'cash-movement-set':'cash-movement-positive';}
   function movementPrefix(type){return (type==='remove'||type==='purchase')?'− ':type==='set'?'= ':'+ ';}
   function openDrawerDialog(){ if(!can(2)){toast('Accès refusé');return;} state.drawerMode='add'; $('#drawerAmount').value='0'; $('#drawerReason').value=''; $$('[data-drawer-mode]').forEach(b=>b.classList.toggle('active',b.dataset.drawerMode==='add')); renderDrawerDialogSummary(); openDialog('drawerDialog'); }
@@ -579,7 +625,7 @@
 
   function renderJournal(){ const q=state.journalSearch.toLowerCase().trim();const list=data.journal.filter(j=>`${j.employee} ${j.action} ${j.detail}`.toLowerCase().includes(q));$('#journalTable').innerHTML=list.length?list.map(j=>`<tr><td>${formatDate(j.date)}</td><td>${escapeHtml(j.employee)}</td><td><b>${escapeHtml(j.action)}</b></td><td>${escapeHtml(j.detail)}</td></tr>`).join(''):'<tr><td colspan="4" class="empty-table">Aucune activité enregistrée.</td></tr>'; }
 
-  function exportData(){ const payload={version:10,exportedAt:nowISO(),data}; downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`rexs-diner-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);toast('Sauvegarde téléchargée'); }
+  function exportData(){ const payload={version:11,exportedAt:nowISO(),data}; downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`rexs-diner-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);toast('Sauvegarde téléchargée'); }
   function importData(file){ const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result);const source=parsed.data||parsed;if(!Array.isArray(source.products)||!Array.isArray(source.employees))throw new Error();confirmAction('Importer cette sauvegarde ?','Les données actuelles seront remplacées.',()=>{Object.assign(data,fresh(),source);save();log('Sauvegarde','Données importées');renderAll();renderLogin();toast('Sauvegarde importée');});}catch{toast('Fichier de sauvegarde invalide');}};reader.readAsText(file); }
   function downloadBlob(blob,name){ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500); }
 
@@ -605,6 +651,12 @@
   // Stock/products
   $('#addProduct').onclick=()=>openProductDialog();$('#productForm').addEventListener('submit',saveProduct);$('#stockSearch').oninput=e=>{state.stockSearch=e.target.value;renderStock();};$('#stockFilter').onchange=e=>{state.stockFilter=e.target.value;renderStock();};$$('[data-stock-mode]').forEach(b=>b.onclick=()=>{state.stockMode=b.dataset.stockMode;$$('[data-stock-mode]').forEach(x=>x.classList.toggle('active',x===b));});$$('[data-quick]').forEach(b=>b.onclick=()=>$('#stockQuantity').value=b.dataset.quick);$('#stockForm').addEventListener('submit',saveStock);
 
+
+
+  // Ajout manuel de dollars au fonds de caisse
+  if($('#drawerAddDollars')) $('#drawerAddDollars').onclick=openDollarDrawerDialog;
+  if($('#drawerDollarAmount')) $('#drawerDollarAmount').oninput=updateDollarPreview;
+  if($('#dollarDrawerForm')) $('#dollarDrawerForm').addEventListener('submit',addDollarsToDrawer);
 
   // Matières premières / commandes fournisseurs
   $('#addMaterial').onclick=()=>openMaterialDialog();
@@ -634,5 +686,5 @@
 
   // Clock
   function tick(){ $('#clock').textContent=new Date().toLocaleTimeString('fr-BE',{hour:'2-digit',minute:'2-digit'}); } tick();setInterval(tick,1000);
-  renderLogin();renderPin();initRealtime();
+  applyTheme(getStoredTheme());renderLogin();renderPin();initRealtime();
 })();

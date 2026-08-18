@@ -295,6 +295,9 @@
         </section>
 
         <section id="view-drawer" class="view">
+          <div class="drawer-dollar-shortcut">
+            <button type="button" id="drawerAddDollars" class="button button-dollar">💵 Ajouter des dollars</button>
+          </div>
           <div class="section-head">
             <div><span class="kicker">TRÉSORERIE</span><h2>Fonds de caisse</h2><p>Un seul solde global en pesos. Les paiements en dollars sont convertis automatiquement au taux ×23.</p></div>
             <button type="button" id="adjustDrawer" class="button button-primary">＋ Ajuster le fonds</button>
@@ -400,6 +403,36 @@
     </form>
   </dialog>
 
+
+
+  <dialog id="dollarDrawerDialog" class="dialog small-dialog">
+    <form method="dialog" id="dollarDrawerForm">
+      <header>
+        <div><span class="kicker">FONDS DE CAISSE</span><h3>Ajouter des dollars</h3></div>
+        <button type="button" class="dialog-close" data-close-dialog="dollarDrawerDialog">×</button>
+      </header>
+      <div class="currency-conversion-card">
+        <div><span>Taux fixe</span><strong>1 $ = 23 pesos</strong></div>
+        <small>Les dollars saisis sont immédiatement convertis et ajoutés au solde global en pesos.</small>
+      </div>
+      <div class="form-stack">
+        <label>Montant en dollars ($)
+          <input id="drawerDollarAmount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="100" required />
+        </label>
+        <div class="conversion-preview">
+          <span>Montant ajouté au solde</span>
+          <strong id="drawerDollarPreview">0 pesos</strong>
+        </div>
+        <label>Motif / note
+          <input id="drawerDollarReason" maxlength="100" placeholder="Ex. Apport espèces en dollars" />
+        </label>
+      </div>
+      <footer>
+        <button type="button" class="button button-soft" data-close-dialog="dollarDrawerDialog">Annuler</button>
+        <button type="submit" class="button button-dollar">Convertir & ajouter</button>
+      </footer>
+    </form>
+  </dialog>
 
   <dialog id="materialDialog" class="dialog small-dialog">
     <form method="dialog" id="materialForm">

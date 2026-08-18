@@ -1,32 +1,32 @@
-# Rex's Diner — Caisse & Gestion V10 Synchronisation fiable
+# Rex's Diner — Caisse & Gestion V11
 
-Cette version corrige le cas où un utilisateur affichait « Hors ligne » alors que le site restait accessible.
+## Nouveautés V11
 
-## Synchronisation V10
-La V10 utilise maintenant deux mécanismes simultanément :
+### Thème sombre
+- activation depuis Réglages > Apparence
+- choix mémorisé sur chaque appareil
+- adaptation de la caisse, stocks, tableaux, dialogues, commandes fournisseurs et écrans de gestion
+- aucune incidence sur les données partagées
 
-1. **SSE temps réel** — mise à jour instantanée lorsque la connexion permanente est acceptée par le navigateur/réseau.
-2. **Polling de secours toutes les 1,5 secondes** — vérifie la révision du serveur et récupère automatiquement les changements si SSE est bloqué ou coupé.
+### Ajout manuel de dollars
+- bouton « Ajouter des dollars » dans le fonds de caisse
+- saisie d'un montant en USD
+- conversion automatique au taux fixe 1 $ = 23 pesos
+- ajout immédiat au solde global unique en pesos
+- aperçu de la conversion avant validation
+- motif / note optionnel
+- mouvement enregistré dans l'historique du fonds de caisse
+- journal d'activité avec employé et conversion
 
-Le polling ne télécharge la base complète que lorsqu'une révision plus récente existe.
+Exemple :
+100 $ → +2 300 pesos au solde global.
 
-La synchronisation est également forcée :
-- quand l'utilisateur revient sur l'onglet ;
-- quand la fenêtre reprend le focus ;
-- quand la connexion Internet revient.
+## Synchronisation
+La synchronisation V10 est conservée :
+- SSE temps réel
+- polling de secours toutes les 1,5 seconde
+- synchronisation entre utilisateurs sur des réseaux différents
 
-## Indicateur
-- `Temps réel connecté` : SSE fonctionne.
-- `Synchronisation active` : SSE est indisponible mais le système de secours fonctionne. Les changements arrivent automatiquement, généralement sous 1 à 2 secondes.
-- `Reconnexion…` : aucun des deux mécanismes ne joint momentanément le serveur.
-
-## Déploiement
-Remplace les fichiers de la V9 dans ton dépôt GitHub par ceux de cette V10 puis laisse Render redéployer.
-
-Le disque persistant `/var/data` n'est pas supprimé par cette mise à jour : les données existantes restent conservées.
-
-## Test
-Ouvre le site sur deux appareils différents.
-1. Connecte les deux utilisateurs.
-2. Modifie un stock ou le solde sur le premier.
-3. Le deuxième doit se mettre à jour automatiquement sans déconnexion.
+## Mise à jour depuis V10
+Remplace les fichiers du dépôt GitHub par ceux de la V11 puis laisse Render redéployer.
+Le disque persistant `/var/data` reste inchangé et conserve toutes les données.
