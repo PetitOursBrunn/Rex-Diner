@@ -389,14 +389,16 @@
     const t=calcTotals(); const usePesos=state.paymentCurrency==='MXN'; $('#subtotal').textContent=usePesos?peso(toPesos(t.subtotal)):money(t.subtotal); $('#discountAmount').textContent=`− ${usePesos?peso(toPesos(t.discount)):money(t.discount)}`; $('#taxAmount').textContent=usePesos?peso(toPesos(t.tax)):money(t.tax); $('#total').textContent=usePesos?peso(toPesos(t.total)):money(t.total); $('#convertedTotal').textContent=usePesos?money(t.total):peso(toPesos(t.total)); $$('.payment').forEach(b=>b.disabled=!state.cart.length); $('#holdSale').disabled=!state.cart.length;
   }
 
-  function openOrderConfirmation(method){
+  function openOrderConfirmation(method='Espèces'){
     if(!state.cart.length){toast('Le ticket est vide');return;}
     const t=totals();
-    state.pendingCheckoutMethod=method;
+
+    state.pendingCheckoutMethod='Espèces';
     state.pendingCheckoutCurrency=state.paymentCurrency||'USD';
 
     const count=state.cart.reduce((s,i)=>s+Number(i.qty||0),0);
     $('#orderConfirmCount').textContent=String(count);
+
     $('#orderConfirmItems').innerHTML=state.cart.map(i=>`
       <div class="order-confirm-item">
         <div>
@@ -407,32 +409,39 @@
       </div>`).join('');
 
     $('#orderConfirmSubtotal').textContent=money(t.subtotal);
+
     const discountValue=Math.max(0,Number(t.subtotal||0)-Number(t.total||0));
     $('#orderConfirmDiscount').textContent=discountValue>0?`− ${money(discountValue)}`:money(0);
+
     $('#orderConfirmTotal').textContent=money(t.total);
 
     const currency=state.pendingCheckoutCurrency;
-    const payLabel=method==='Espèces'
-      ? (currency==='USD'
-          ? `Paiement espèces en dollars • ${usd(t.total)} = ${peso(t.total*EXCHANGE_RATE)}`
-          : `Paiement espèces en pesos • ${peso(t.total*EXCHANGE_RATE)}`)
-      : `Paiement par carte • ${money(t.total)}`;
-    $('#orderConfirmPaymentText').textContent=payLabel;
+    const paymentText=currency==='USD'
+      ? `Paiement en espèces • ${usd(t.total)} = ${peso(t.total*EXCHANGE_RATE)}`
+      : `Paiement en espèces • ${peso(t.total*EXCHANGE_RATE)}`;
 
+    $('#orderConfirmPaymentText').textContent=paymentText;
     openDialog('orderConfirmDialog');
   }
 
   function confirmAndCheckout(e){
     e.preventDefault();
-    const method=state.pendingCheckoutMethod;
-    if(!method){closeDialog('orderConfirmDialog');return;}
-    closeDialog('orderConfirmDialog');
-    const savedMethod=method;
+
+    if(!state.cart.length){
+      closeDialog('orderConfirmDialog');
+      toast('Le ticket est vide');
+      return;
+    }
+
     state.pendingCheckoutMethod=null;
-    checkout(savedMethod);
+    closeDialog('orderConfirmDialog');
+
+    // L'encaissement réel est effectué uniquement ici, après confirmation.
+    checkout('Espèces');
   }
 
   function checkout(method){
+    method='Espèces';
     if(!state.cart.length)return; for(const item of state.cart){const p=data.products.find(x=>x.id===item.id);if(!p||p.stock<item.qty){toast(`Stock insuffisant : ${item.name}`);return;}}
     const t=calcTotals(); state.cart.forEach(item=>data.products.find(x=>x.id===item.id).stock-=item.qty);
     const currency=state.paymentCurrency; const paidTotal=currency==='MXN'?toPesos(t.total):t.total;
@@ -713,7 +722,7 @@
   $('#supplyOrderNote').oninput=e=>state.supplyNote=e.target.value;
   $('#submitSupplyOrder').onclick=submitSupplyOrder;
   $('#exportSupplyOrders').onclick=exportSupplyOrdersCSV;
-
+if($('#cashPayBtn')) $('#cashPayBtn').onclick=()=>openOrderConfirmation('Espèces');
 
   if($('#orderConfirmForm')) $('#orderConfirmForm').addEventListener('submit',confirmAndCheckout);
 

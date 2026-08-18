@@ -1,8 +1,8 @@
 {
   "name": "rexs-diner-pos-v8",
-  "version": "11.4.0",
+  "version": "11.5.0",
   "private": true,
-  "description": "Rex's Diner V11.4 avec confirmation détaillée de commande avant encaissement",
+  "description": "Rex's Diner V11.5 paiement espèces corrigé, carte supprimée",
   "scripts": {
     "start": "node server.js"
   },

@@ -426,3 +426,8 @@ html.dark-theme .order-confirm-top,
 html.dark-theme .order-confirm-payment{background:#20252c!important;border-color:#303741!important}
 html.dark-theme .order-confirm-item{border-color:#2a3038!important}
 @media(max-width:600px){.order-confirm-dialog{width:calc(100% - 16px)}.order-confirm-items{max-height:42vh}}
+
+
+/* V11.5 — paiement espèces uniquement */
+.payment-grid{grid-template-columns:1fr!important}
+#cashPayBtn{width:100%;min-height:48px;font-size:12px}
