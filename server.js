@@ -143,7 +143,10 @@ function serveStatic(req, res) {
     }
     res.writeHead(200, {
       'Content-Type': contentType(file),
-      'Cache-Control': file.endsWith('.html') || file.endsWith('.js') ? 'no-cache' : 'public, max-age=3600'
+      'Cache-Control': (file.endsWith('.html') || file.endsWith('.js') || file.endsWith('.css'))
+        ? 'no-store, no-cache, must-revalidate, max-age=0'
+        : 'public, max-age=3600',
+      ...(file.endsWith('.html') || file.endsWith('.js') || file.endsWith('.css') ? {'Pragma':'no-cache','Expires':'0'} : {})
     });
     fs.createReadStream(file).pipe(res);
   });

@@ -368,3 +368,43 @@ html.dark-theme .service-card{
     grid-template-columns:minmax(0,1fr) 120px;
   }
 }
+
+
+/* V11.3 — fallback de thème + cache bust */
+html[data-theme="dark"]{
+  --bg:#0d0f12;
+  --surface:#171a1f;
+  --surface-2:#1f242b;
+  --ink:#f4f6f8;
+  --muted:#aab1bb;
+  --line:#303741;
+  --red:#e05b5b;
+  --shadow:0 16px 42px rgba(0,0,0,.38);
+}
+html[data-theme="dark"] body,
+html[data-theme="dark"] main,
+html[data-theme="dark"] .view{background:#0d0f12!important;color:#f4f6f8!important}
+html[data-theme="dark"] .topbar{background:rgba(18,21,26,.97)!important;color:#f4f6f8!important;border-color:#303741!important}
+html[data-theme="dark"] .panel,
+html[data-theme="dark"] .workspace-card,
+html[data-theme="dark"] .checkout-card,
+html[data-theme="dark"] .inventory-card,
+html[data-theme="dark"] .settings-card,
+html[data-theme="dark"] .metric,
+html[data-theme="dark"] .metric-card,
+html[data-theme="dark"] .product-card,
+html[data-theme="dark"] dialog,
+html[data-theme="dark"] .login-card{
+  background:#171a1f!important;color:#f4f6f8!important;border-color:#303741!important
+}
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] .search-box,
+html[data-theme="dark"] .quick-action,
+html[data-theme="dark"] .login-users button,
+html[data-theme="dark"] .pin-pad button{
+  background:#20252c!important;color:#f4f6f8!important;border-color:#343c47!important
+}
+html[data-theme="dark"] th{background:#20252c!important;color:#b9c0c9!important}
+html[data-theme="dark"] td{color:#eef1f4!important;border-color:#2a3038!important}

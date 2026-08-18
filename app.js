@@ -288,6 +288,7 @@
   function applyTheme(theme){
     const dark=theme==='dark';
     document.documentElement.classList.toggle('dark-theme',dark);
+    document.documentElement.dataset.theme=dark?'dark':'light';
     const toggle=$('#darkThemeToggle');
     const label=$('#themeModeLabel');
     const desc=$('#themeModeDescription');
