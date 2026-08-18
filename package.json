@@ -1,8 +1,8 @@
 {
   "name": "rexs-diner-pos-v8",
-  "version": "11.3.0",
+  "version": "11.4.0",
   "private": true,
-  "description": "Rex's Diner V11.3 avec thème sombre et cache CSS corrigé",
+  "description": "Rex's Diner V11.4 avec confirmation détaillée de commande avant encaissement",
   "scripts": {
     "start": "node server.js"
   },

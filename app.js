@@ -73,7 +73,7 @@
     sseConnected:false,pollConnected:false,pollTimer:null,reconnectTimer:null,
     lastServerContact:0,lastAppliedRevision:0
   };
-  const state={currentUser:null,loginUserId:null,pin:'',view:'dashboard',category:'Tous',productSearch:'',stockSearch:'',stockFilter:'all',salesSearch:'',journalSearch:'',materialSearch:'',supplyDraft:[],supplyNote:'',cart:[],orderNote:'',discount:0,stockTarget:null,stockMode:'add',confirmAction:null,paymentCurrency:'USD',drawerMode:'add'};
+  const state={currentUser:null,loginUserId:null,pin:'',view:'dashboard',category:'Tous',productSearch:'',stockSearch:'',stockFilter:'all',salesSearch:'',journalSearch:'',materialSearch:'',supplyDraft:[],supplyNote:'',cart:[],orderNote:'',discount:0,stockTarget:null,stockMode:'add',confirmAction:null,paymentCurrency:'USD',drawerMode:'add',pendingCheckoutMethod:null,pendingCheckoutCurrency:null};
   function save(){
     localStorage.setItem(KEY,JSON.stringify(data));
     if(!sync.ready || sync.suppress){ return; }
@@ -388,6 +388,50 @@
     $$('[data-cart-id]').forEach(b=>b.onclick=()=>changeQty(Number(b.dataset.cartId),Number(b.dataset.delta)));
     const t=calcTotals(); const usePesos=state.paymentCurrency==='MXN'; $('#subtotal').textContent=usePesos?peso(toPesos(t.subtotal)):money(t.subtotal); $('#discountAmount').textContent=`− ${usePesos?peso(toPesos(t.discount)):money(t.discount)}`; $('#taxAmount').textContent=usePesos?peso(toPesos(t.tax)):money(t.tax); $('#total').textContent=usePesos?peso(toPesos(t.total)):money(t.total); $('#convertedTotal').textContent=usePesos?money(t.total):peso(toPesos(t.total)); $$('.payment').forEach(b=>b.disabled=!state.cart.length); $('#holdSale').disabled=!state.cart.length;
   }
+
+  function openOrderConfirmation(method){
+    if(!state.cart.length){toast('Le ticket est vide');return;}
+    const t=totals();
+    state.pendingCheckoutMethod=method;
+    state.pendingCheckoutCurrency=state.paymentCurrency||'USD';
+
+    const count=state.cart.reduce((s,i)=>s+Number(i.qty||0),0);
+    $('#orderConfirmCount').textContent=String(count);
+    $('#orderConfirmItems').innerHTML=state.cart.map(i=>`
+      <div class="order-confirm-item">
+        <div>
+          <strong>${escapeHtml(i.name)}</strong>
+          <small>${i.qty} × ${money(i.price)}</small>
+        </div>
+        <b>${money(i.price*i.qty)}</b>
+      </div>`).join('');
+
+    $('#orderConfirmSubtotal').textContent=money(t.subtotal);
+    const discountValue=Math.max(0,Number(t.subtotal||0)-Number(t.total||0));
+    $('#orderConfirmDiscount').textContent=discountValue>0?`− ${money(discountValue)}`:money(0);
+    $('#orderConfirmTotal').textContent=money(t.total);
+
+    const currency=state.pendingCheckoutCurrency;
+    const payLabel=method==='Espèces'
+      ? (currency==='USD'
+          ? `Paiement espèces en dollars • ${usd(t.total)} = ${peso(t.total*EXCHANGE_RATE)}`
+          : `Paiement espèces en pesos • ${peso(t.total*EXCHANGE_RATE)}`)
+      : `Paiement par carte • ${money(t.total)}`;
+    $('#orderConfirmPaymentText').textContent=payLabel;
+
+    openDialog('orderConfirmDialog');
+  }
+
+  function confirmAndCheckout(e){
+    e.preventDefault();
+    const method=state.pendingCheckoutMethod;
+    if(!method){closeDialog('orderConfirmDialog');return;}
+    closeDialog('orderConfirmDialog');
+    const savedMethod=method;
+    state.pendingCheckoutMethod=null;
+    checkout(savedMethod);
+  }
+
   function checkout(method){
     if(!state.cart.length)return; for(const item of state.cart){const p=data.products.find(x=>x.id===item.id);if(!p||p.stock<item.qty){toast(`Stock insuffisant : ${item.name}`);return;}}
     const t=calcTotals(); state.cart.forEach(item=>data.products.find(x=>x.id===item.id).stock-=item.qty);
@@ -629,7 +673,7 @@
 
   function renderJournal(){ const q=state.journalSearch.toLowerCase().trim();const list=data.journal.filter(j=>`${j.employee} ${j.action} ${j.detail}`.toLowerCase().includes(q));$('#journalTable').innerHTML=list.length?list.map(j=>`<tr><td>${formatDate(j.date)}</td><td>${escapeHtml(j.employee)}</td><td><b>${escapeHtml(j.action)}</b></td><td>${escapeHtml(j.detail)}</td></tr>`).join(''):'<tr><td colspan="4" class="empty-table">Aucune activité enregistrée.</td></tr>'; }
 
-  function exportData(){ const payload={version:11,exportedAt:nowISO(),data}; downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`rexs-diner-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);toast('Sauvegarde téléchargée'); }
+  function exportData(){ const payload={version:11.4,exportedAt:nowISO(),data}; downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`rexs-diner-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);toast('Sauvegarde téléchargée'); }
   function importData(file){ const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result);const source=parsed.data||parsed;if(!Array.isArray(source.products)||!Array.isArray(source.employees))throw new Error();confirmAction('Importer cette sauvegarde ?','Les données actuelles seront remplacées.',()=>{Object.assign(data,fresh(),source);save();log('Sauvegarde','Données importées');renderAll();renderLogin();toast('Sauvegarde importée');});}catch{toast('Fichier de sauvegarde invalide');}};reader.readAsText(file); }
   function downloadBlob(blob,name){ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500); }
 
@@ -650,7 +694,7 @@
   document.addEventListener('click',e=>{ if(!e.target.closest('.topbar-actions'))$('#userMenu').classList.add('hidden'); });
 
   // POS
-  $('#productSearch').oninput=e=>{state.productSearch=e.target.value;renderProducts();};$('#clearCart').onclick=()=>{if(!state.cart.length)return;confirmAction('Vider le ticket ?','Tous les articles de la commande en cours seront retirés.',()=>{state.cart=[];renderCart();log('Ticket','Ticket en cours vidé');});};$('#discountSelect').onchange=e=>{state.discount=Number(e.target.value);renderCart();};$('#orderNote').oninput=e=>state.orderNote=e.target.value;$('#holdSale').onclick=holdSale;$$('[data-currency]').forEach(b=>b.onclick=()=>{state.paymentCurrency=b.dataset.currency;$$('[data-currency]').forEach(x=>x.classList.toggle('active',x===b));renderCart();});$$('.payment').forEach(b=>b.onclick=()=>checkout(b.dataset.method));
+  $('#productSearch').oninput=e=>{state.productSearch=e.target.value;renderProducts();};$('#clearCart').onclick=()=>{if(!state.cart.length)return;confirmAction('Vider le ticket ?','Tous les articles de la commande en cours seront retirés.',()=>{state.cart=[];renderCart();log('Ticket','Ticket en cours vidé');});};$('#discountSelect').onchange=e=>{state.discount=Number(e.target.value);renderCart();};$('#orderNote').oninput=e=>state.orderNote=e.target.value;$('#holdSale').onclick=holdSale;$$('[data-currency]').forEach(b=>b.onclick=()=>{state.paymentCurrency=b.dataset.currency;$$('[data-currency]').forEach(x=>x.classList.toggle('active',x===b));renderCart();});$$('.payment').forEach(b=>b.onclick=()=>openOrderConfirmation(b.dataset.method));
 
   // Stock/products
   $('#addProduct').onclick=()=>openProductDialog();$('#productForm').addEventListener('submit',saveProduct);$('#stockSearch').oninput=e=>{state.stockSearch=e.target.value;renderStock();};$('#stockFilter').onchange=e=>{state.stockFilter=e.target.value;renderStock();};$$('[data-stock-mode]').forEach(b=>b.onclick=()=>{state.stockMode=b.dataset.stockMode;$$('[data-stock-mode]').forEach(x=>x.classList.toggle('active',x===b));});$$('[data-quick]').forEach(b=>b.onclick=()=>$('#stockQuantity').value=b.dataset.quick);$('#stockForm').addEventListener('submit',saveStock);
@@ -670,6 +714,9 @@
   $('#submitSupplyOrder').onclick=submitSupplyOrder;
   $('#exportSupplyOrders').onclick=exportSupplyOrdersCSV;
 
+
+  if($('#orderConfirmForm')) $('#orderConfirmForm').addEventListener('submit',confirmAndCheckout);
+
   // Sales
   $('#salesSearch').oninput=e=>{state.salesSearch=e.target.value;renderSales();};$('#exportSales').onclick=exportSalesCSV;$('#clearSales').onclick=()=>confirmAction('Effacer l’historique des ventes ?','Cette action supprimera toutes les ventes enregistrées.',()=>{data.sales=[];save();log('Ventes','Historique des ventes effacé');renderAll();toast('Historique effacé');});
 
@@ -683,7 +730,7 @@
   $('#saveSettings').onclick=()=>{data.lowStockThreshold=Math.max(1,Math.floor(Number($('#lowStockThreshold').value)||5));data.taxRate=Math.max(0,Number($('#taxRate').value)||0);save();log('Réglages',`Seuil stock ${data.lowStockThreshold} • TVA ${data.taxRate}%`);renderAll();toast('Réglages enregistrés');};$('#exportData').onclick=exportData;$('#importDataButton').onclick=()=>$('#importDataInput').click();$('#importDataInput').onchange=e=>{const f=e.target.files?.[0];if(f)importData(f);e.target.value='';};$('#resetApp').onclick=()=>confirmAction('Réinitialiser l’application ?','Produits, stocks, ventes, employés et journal seront remis à zéro.',()=>{const reset=fresh();Object.keys(data).forEach(k=>delete data[k]);Object.assign(data,reset);save();state.currentUser=null;toast('Application réinitialisée');setTimeout(lockApp,350);});
 
   // Dialogs
-  $$('[data-close-dialog]').forEach(b=>b.onclick=()=>closeDialog(b.dataset.closeDialog));$('#confirmButton').onclick=()=>{const fn=state.confirmAction;state.confirmAction=null;closeDialog('confirmDialog');if(fn)fn();};$('#printReceipt').onclick=()=>window.print();
+  $$('[data-close-dialog]').forEach(b=>b.onclick=()=>closeDialog(b.dataset.closeDialog));$('#confirmButton').onclick=()=>{const fn=state.confirmAction;state.confirmAction=null;closeDialog('confirmDialog');if(fn)fn();};
   $$('dialog').forEach(d=>d.addEventListener('close',()=>{if(!$$('dialog[open]').length)$('#modalBackdrop').classList.add('hidden');}));
 
   // Clock

@@ -1,30 +1,35 @@
-# Rex's Diner — V11.3
+# Rex's Diner — V11.4
 
-Cette version corrige le problème où le bouton du thème sombre changeait d'état mais où les couleurs du site ne changeaient pas.
+Cette version conserve tout le fonctionnement de la V11.3.
 
-## Cause
-Le serveur mettait `styles.css` en cache (`max-age=3600`). Après un déploiement Render, un navigateur pouvait donc charger :
-- le nouveau `app.js`, où le bouton fonctionne ;
-- l'ancien `styles.css`, qui ne contient pas les nouvelles couleurs sombres.
+## Modification
+L'option d'impression du reçu après une vente a été retirée.
 
-## Correction
-- `styles.css?v=11.3.0` force le chargement de la nouvelle feuille de style.
-- `app.js?v=11.3.0` est également versionné.
-- HTML, CSS et JavaScript sont maintenant servis avec `no-store / no-cache`.
-- le thème est appliqué à la fois via `.dark-theme` et `data-theme="dark"` pour plus de robustesse.
+À la place, lorsqu'un employé clique sur un moyen de paiement, une fenêtre de confirmation s'ouvre avant l'encaissement avec :
+- la liste complète des produits ;
+- les quantités ;
+- le prix de chaque ligne ;
+- le sous-total ;
+- la remise éventuelle ;
+- le total ;
+- le moyen de paiement sélectionné.
+
+L'employé peut alors :
+- revenir à la commande pour la corriger ;
+- cliquer sur `Confirmer & encaisser`.
+
+La vente et la modification du stock ne sont effectuées qu'après cette confirmation.
 
 ## Inchangé
-Tout le reste reste identique à la V11.2 :
-- profils et connexion
-- synchronisation
-- caisse
+- thème sombre
+- ajout de fonds Pesos/Dollars
+- taux 1 $ = 23 pesos
+- profils et PIN
+- synchronisation temps réel
 - stocks
 - ventes
 - matières premières
 - fonds de caisse
-- ajout Pesos/Dollars dans le même formulaire
 - employés
 - journal
-- Render et `/var/data`
-
-Après le redéploiement Render, un simple rechargement devrait suffire. Un Ctrl+F5 peut être utilisé une seule fois sur les navigateurs ayant gardé une ancienne version.
+- hébergement Render

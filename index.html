@@ -454,9 +454,44 @@
     </form>
   </dialog>
 
+
+  <dialog id="orderConfirmDialog" class="dialog order-confirm-dialog">
+    <form method="dialog" id="orderConfirmForm">
+      <header>
+        <div>
+          <span class="kicker">CONFIRMATION</span>
+          <h3>Confirmer la commande</h3>
+        </div>
+        <button type="button" class="dialog-close" data-close-dialog="orderConfirmDialog">×</button>
+      </header>
+
+      <div class="order-confirm-summary">
+        <div class="order-confirm-top">
+          <span>Articles</span>
+          <strong id="orderConfirmCount">0</strong>
+        </div>
+        <div id="orderConfirmItems" class="order-confirm-items"></div>
+      </div>
+
+      <div class="order-confirm-totals">
+        <div><span>Sous-total</span><strong id="orderConfirmSubtotal">0</strong></div>
+        <div><span>Remise</span><strong id="orderConfirmDiscount">0</strong></div>
+        <div class="order-confirm-grand"><span>Total</span><strong id="orderConfirmTotal">0</strong></div>
+      </div>
+
+      <p id="orderConfirmPaymentText" class="order-confirm-payment"></p>
+
+      <footer>
+        <button type="button" class="button button-soft" data-close-dialog="orderConfirmDialog">Retour</button>
+        <button type="submit" class="button button-primary">Confirmer & encaisser</button>
+      </footer>
+    </form>
+  </dialog>
+
   <dialog id="receiptDialog" class="dialog receipt-dialog">
     <div id="receiptContent"></div>
-    <footer><button type="button" id="printReceipt" class="button button-soft">Imprimer</button><button type="button" class="button button-primary" data-close-dialog="receiptDialog">Fermer</button></footer>
+    <footer>
+<button type="button" class="button button-primary" data-close-dialog="receiptDialog">Fermer</button></footer>
   </dialog>
 
   <dialog id="confirmDialog" class="dialog confirm-dialog">

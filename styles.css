@@ -408,3 +408,21 @@ html[data-theme="dark"] .pin-pad button{
 }
 html[data-theme="dark"] th{background:#20252c!important;color:#b9c0c9!important}
 html[data-theme="dark"] td{color:#eef1f4!important;border-color:#2a3038!important}
+
+
+/* V11.4 — confirmation de commande avant encaissement */
+.order-confirm-dialog{width:min(520px,calc(100% - 24px))}
+.order-confirm-summary{border:1px solid var(--line);border-radius:13px;overflow:hidden;background:var(--surface)}
+.order-confirm-top{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--surface-2);border-bottom:1px solid var(--line)}
+.order-confirm-top span{font-size:9px;color:var(--muted);font-weight:850}.order-confirm-top strong{font-size:12px}
+.order-confirm-items{max-height:300px;overflow:auto;padding:6px 12px}
+.order-confirm-item{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:10px 0;border-bottom:1px solid var(--line)}
+.order-confirm-item:last-child{border-bottom:0}.order-confirm-item strong{display:block;font-size:11px}.order-confirm-item small{display:block;margin-top:3px;color:var(--muted);font-size:9px}.order-confirm-item>b{font-size:11px;white-space:nowrap}
+.order-confirm-totals{margin-top:12px;border:1px solid var(--line);border-radius:12px;padding:11px 12px;background:var(--surface)}
+.order-confirm-totals>div{display:flex;justify-content:space-between;gap:16px;padding:4px 0;font-size:10px}.order-confirm-totals span{color:var(--muted)}.order-confirm-grand{margin-top:6px;padding-top:10px!important;border-top:1px dashed var(--line);font-size:15px!important}.order-confirm-grand span,.order-confirm-grand strong{color:var(--ink)!important}.order-confirm-payment{margin:12px 0 0;padding:10px 12px;border-radius:10px;background:var(--surface-2);color:var(--muted);font-size:9px;line-height:1.4}
+html.dark-theme .order-confirm-summary,
+html.dark-theme .order-confirm-totals{background:#171a1f!important;border-color:#303741!important}
+html.dark-theme .order-confirm-top,
+html.dark-theme .order-confirm-payment{background:#20252c!important;border-color:#303741!important}
+html.dark-theme .order-confirm-item{border-color:#2a3038!important}
+@media(max-width:600px){.order-confirm-dialog{width:calc(100% - 16px)}.order-confirm-items{max-height:42vh}}
