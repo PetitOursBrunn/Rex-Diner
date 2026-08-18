@@ -44,8 +44,8 @@
     supplyOrders: [], cashDrawerPesos:0, exchangeRate:EXCHANGE_RATE, lowStockThreshold:5, taxRate:10
   };
 
-  const KEY='rexs_diner_pos_v8_cache';
-  const OLD_KEY='rexs_diner_pos_v7';
+  const KEY='rexs_diner_pos_v10_cache';
+  const OLD_KEY='rexs_diner_pos_v8_cache';
   function fresh(){ return JSON.parse(JSON.stringify(defaults)); }
   function load(){
     try {
@@ -65,7 +65,13 @@
     catch { return fresh(); }
   }
   const data=load();
-  const sync={ready:false,connected:false,revision:0,clientId:(crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random()),sending:false,pending:false,suppress:false,eventSource:null};
+  const sync={
+    ready:false,connected:false,revision:0,
+    clientId:(crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random()),
+    sending:false,pending:false,suppress:false,eventSource:null,
+    sseConnected:false,pollConnected:false,pollTimer:null,reconnectTimer:null,
+    lastServerContact:0,lastAppliedRevision:0
+  };
   const state={currentUser:null,loginUserId:null,pin:'',view:'dashboard',category:'Tous',productSearch:'',stockSearch:'',stockFilter:'all',salesSearch:'',journalSearch:'',materialSearch:'',supplyDraft:[],supplyNote:'',cart:[],orderNote:'',discount:0,stockTarget:null,stockMode:'add',confirmAction:null,paymentCurrency:'USD',drawerMode:'add'};
   function save(){
     localStorage.setItem(KEY,JSON.stringify(data));
@@ -79,6 +85,19 @@
     const s=$('#settingsSyncState'); if(s)s.textContent=text;
     const r=$('#settingsRevision'); if(r)r.textContent=String(sync.revision||0);
   }
+  function refreshSyncBadge(){
+    const healthy = sync.sseConnected || sync.pollConnected;
+    sync.connected = healthy;
+    if(sync.sseConnected){
+      sync.lastServerContact=Date.now();refreshSyncBadge();
+    }else if(sync.pollConnected){
+      setSyncStatus('online','Synchronisation active');
+    }else if(sync.ready){
+      setSyncStatus('offline','Reconnexion…');
+    }else{
+      setSyncStatus('connecting','Connexion…');
+    }
+  }
   async function queueServerSave(){
     if(sync.sending){ sync.pending=true; return; }
     sync.sending=true;
@@ -91,9 +110,9 @@
       if(!res.ok) throw new Error('sync');
       const payload=await res.json();
       if(payload.revision)sync.revision=payload.revision;
-      sync.connected=true; setSyncStatus('online','Temps réel connecté');
+      sync.pollConnected=true;sync.lastServerContact=Date.now();refreshSyncBadge();
     }catch(err){
-      sync.connected=false; setSyncStatus('offline','Hors ligne');
+      sync.pollConnected=false;refreshSyncBadge();
     }finally{
       sync.sending=false;
       if(sync.pending){sync.pending=false;queueServerSave();}
@@ -121,7 +140,10 @@
         $('#loginView').classList.remove('hidden');
       }
     }
-    sync.revision=revision||sync.revision;
+    if(revision){
+      sync.revision=Math.max(sync.revision||0,Number(revision)||0);
+      sync.lastAppliedRevision=Math.max(sync.lastAppliedRevision||0,Number(revision)||0);
+    }
     sync.suppress=false;
     renderLogin();renderAll();
     setSyncStatus('online','Temps réel connecté');
@@ -144,34 +166,122 @@
         const bp=await boot.json();
         if(bp.data)applyRemoteData(bp.data,bp.revision||1);
       }
-      sync.ready=true;sync.connected=true;setSyncStatus('online','Temps réel connecté');
+      sync.ready=true;
+      sync.pollConnected=true;
+      sync.lastServerContact=Date.now();
+      refreshSyncBadge();
+      startPolling();
       connectEvents();
     }catch(err){
-      sync.ready=false;sync.connected=false;setSyncStatus('offline','Hors ligne');
-      setTimeout(initRealtime,2500);
+      sync.ready=false;
+      sync.pollConnected=false;
+      sync.sseConnected=false;
+      refreshSyncBadge();
+      clearTimeout(sync.reconnectTimer);
+      sync.reconnectTimer=setTimeout(initRealtime,2500);
     }
   }
+
+  async function pollServer(force=false){
+    if(!sync.ready && !force)return;
+    try{
+      const res=await fetch('/api/state?since='+encodeURIComponent(sync.revision||0),{
+        cache:'no-store',
+        headers:{'X-Rex-Client':sync.clientId}
+      });
+      if(!res.ok)throw new Error('poll');
+      const payload=await res.json();
+      sync.pollConnected=true;
+      sync.lastServerContact=Date.now();
+
+      const serverRevision=Number(payload.revision||0);
+      if(payload.changed && payload.data && serverRevision>Number(sync.revision||0)){
+        applyRemoteData(payload.data,serverRevision);
+      }else if(serverRevision>Number(sync.revision||0) && payload.data){
+        applyRemoteData(payload.data,serverRevision);
+      }else{
+        sync.revision=Math.max(Number(sync.revision||0),serverRevision);
+      }
+      refreshSyncBadge();
+    }catch(err){
+      sync.pollConnected=false;
+      refreshSyncBadge();
+    }
+  }
+
+  function startPolling(){
+    clearInterval(sync.pollTimer);
+    // Fallback robuste : même si SSE est coupé, une autre caisse est détectée rapidement.
+    sync.pollTimer=setInterval(()=>pollServer(false),1500);
+    pollServer(true);
+  }
+
+  function scheduleSseReconnect(){
+    clearTimeout(sync.reconnectTimer);
+    sync.reconnectTimer=setTimeout(()=>{
+      if(sync.ready)connectEvents();
+    },2000);
+  }
+
   function connectEvents(){
-    if(sync.eventSource)sync.eventSource.close();
+    if(sync.eventSource){
+      try{sync.eventSource.close();}catch{}
+      sync.eventSource=null;
+    }
     const es=new EventSource('/api/events?clientId='+encodeURIComponent(sync.clientId));
     sync.eventSource=es;
-    es.onopen=()=>{sync.connected=true;setSyncStatus('online','Temps réel connecté');};
+
+    es.onopen=()=>{
+      sync.sseConnected=true;
+      sync.lastServerContact=Date.now();
+      refreshSyncBadge();
+    };
+
     es.onmessage=e=>{
       try{
         const msg=JSON.parse(e.data);
-        if(msg.type==='state'&&msg.clientId!==sync.clientId){
-          applyRemoteData(msg.data,msg.revision);
-          toast('Mise à jour reçue d’une autre caisse');
+        sync.sseConnected=true;
+        sync.lastServerContact=Date.now();
+
+        if(msg.type==='state' && msg.clientId!==sync.clientId){
+          const incomingRevision=Number(msg.revision||0);
+          if(incomingRevision>Number(sync.revision||0)){
+            applyRemoteData(msg.data,incomingRevision);
+            toast('Mise à jour reçue d’une autre caisse');
+          }
         }else if(msg.type==='hello'){
-          sync.revision=msg.revision||sync.revision;
-          setSyncStatus('online','Temps réel connecté');
+          const serverRevision=Number(msg.revision||0);
+          if(serverRevision>Number(sync.revision||0))pollServer(true);
+          sync.revision=Math.max(Number(sync.revision||0),serverRevision);
         }
+        refreshSyncBadge();
       }catch{}
     };
+
     es.onerror=()=>{
-      sync.connected=false;setSyncStatus('offline','Reconnexion…');
+      sync.sseConnected=false;
+      try{es.close();}catch{}
+      if(sync.eventSource===es)sync.eventSource=null;
+      refreshSyncBadge();
+      // On garde le polling actif et on retente SSE indépendamment.
+      scheduleSseReconnect();
     };
   }
+
+  window.addEventListener('focus',()=>pollServer(true));
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible')pollServer(true);
+  });
+  window.addEventListener('online',()=>{
+    pollServer(true);
+    connectEvents();
+  });
+  window.addEventListener('offline',()=>{
+    sync.pollConnected=false;
+    sync.sseConnected=false;
+    refreshSyncBadge();
+  });
+
   function roleLevel(role){ return role==='Patron'?3:role==='Manager'?2:1; }
   function can(level){ return !!state.currentUser && roleLevel(state.currentUser.role)>=level; }
   function toast(msg){ const el=$('#toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toast.timer); toast.timer=setTimeout(()=>el.classList.remove('show'),1800); }
@@ -469,7 +579,7 @@
 
   function renderJournal(){ const q=state.journalSearch.toLowerCase().trim();const list=data.journal.filter(j=>`${j.employee} ${j.action} ${j.detail}`.toLowerCase().includes(q));$('#journalTable').innerHTML=list.length?list.map(j=>`<tr><td>${formatDate(j.date)}</td><td>${escapeHtml(j.employee)}</td><td><b>${escapeHtml(j.action)}</b></td><td>${escapeHtml(j.detail)}</td></tr>`).join(''):'<tr><td colspan="4" class="empty-table">Aucune activité enregistrée.</td></tr>'; }
 
-  function exportData(){ const payload={version:8,exportedAt:nowISO(),data}; downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`rexs-diner-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);toast('Sauvegarde téléchargée'); }
+  function exportData(){ const payload={version:10,exportedAt:nowISO(),data}; downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`rexs-diner-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);toast('Sauvegarde téléchargée'); }
   function importData(file){ const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result);const source=parsed.data||parsed;if(!Array.isArray(source.products)||!Array.isArray(source.employees))throw new Error();confirmAction('Importer cette sauvegarde ?','Les données actuelles seront remplacées.',()=>{Object.assign(data,fresh(),source);save();log('Sauvegarde','Données importées');renderAll();renderLogin();toast('Sauvegarde importée');});}catch{toast('Fichier de sauvegarde invalide');}};reader.readAsText(file); }
   function downloadBlob(blob,name){ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500); }
 

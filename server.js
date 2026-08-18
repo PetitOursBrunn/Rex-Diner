@@ -161,7 +161,15 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === '/api/state' && req.method === 'GET') {
-    return sendJson(res, 200, { initialized: !!state, revision, data: state });
+    const since = Number(url.searchParams.get('since') || -1);
+    const changed = since < revision;
+    return sendJson(res, 200, {
+      initialized: !!state,
+      revision,
+      changed,
+      data: changed || since < 0 ? state : null,
+      serverTime: Date.now()
+    });
   }
 
   if (url.pathname === '/api/bootstrap' && req.method === 'POST') {
@@ -194,17 +202,24 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === '/api/events' && req.method === 'GET') {
+    req.socket.setKeepAlive(true, 10000);
     res.writeHead(200, {
-      'Content-Type':'text/event-stream',
-      'Cache-Control':'no-cache',
+      'Content-Type':'text/event-stream; charset=utf-8',
+      'Cache-Control':'no-cache, no-transform',
       'Connection':'keep-alive',
-      'X-Accel-Buffering':'no'
+      'Keep-Alive':'timeout=120',
+      'X-Accel-Buffering':'no',
+      'Content-Encoding':'identity'
     });
+    if (typeof res.flushHeaders === 'function') res.flushHeaders();
+    res.write('retry: 2000\n');
     res.write(`data: ${JSON.stringify({type:'hello',revision})}\n\n`);
     clients.add(res);
     const timer = setInterval(() => {
-      try { res.write(`: ping ${Date.now()}\n\n`); } catch {}
-    }, 15000);
+      try {
+        res.write(`event: ping\ndata: ${JSON.stringify({type:'ping',revision,time:Date.now()})}\n\n`);
+      } catch {}
+    }, 10000);
     req.on('close', () => {
       clearInterval(timer);
       clients.delete(res);

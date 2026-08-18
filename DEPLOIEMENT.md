@@ -1,4 +1,4 @@
-# Rex's Diner V9 — Mise en ligne
+# Rex's Diner V10 — Mise en ligne
 
 La V9 est prévue pour être accessible depuis Internet à plusieurs utilisateurs en temps réel.
 
@@ -104,3 +104,15 @@ Pour Railway :
 ## Important
 
 Ne publiez jamais le site avec `REXS_ACCESS_PASSWORD` vide. Sans ce mot de passe, toute personne connaissant l'URL pourrait atteindre l'application.
+
+
+# Mise à jour V9 → V10
+
+Si la V9 est déjà en ligne sur Render :
+1. conserve le même service Render et le même disque persistant ;
+2. remplace les fichiers du dépôt GitHub par ceux de la V10 ;
+3. pousse les changements ;
+4. Render redéploie automatiquement ;
+5. ne supprime pas le disque `/var/data`.
+
+La V10 ajoute un système de secours automatique qui vérifie les nouvelles révisions toutes les 1,5 secondes si la connexion SSE permanente ne fonctionne pas.

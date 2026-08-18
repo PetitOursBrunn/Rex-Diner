@@ -1,30 +1,32 @@
-# Rex's Diner — Caisse & Gestion V9 Hébergement Internet
+# Rex's Diner — Caisse & Gestion V10 Synchronisation fiable
 
-V9 prête à être hébergée publiquement afin que plusieurs employés puissent utiliser la même caisse depuis des réseaux différents.
+Cette version corrige le cas où un utilisateur affichait « Hors ligne » alors que le site restait accessible.
 
-## Nouveautés V9
-- déploiement public sur Render ou Railway
-- `render.yaml`
-- `Dockerfile`
-- `railway.toml`
-- stockage persistant configurable avec `DATA_DIR`
-- endpoint de santé `/health`
-- protection HTTP globale par identifiant + mot de passe
-- synchronisation temps réel conservée
-- base commune pour ventes, stocks, caisse, matières premières, employés et journal
+## Synchronisation V10
+La V10 utilise maintenant deux mécanismes simultanément :
 
-## Démarrage local
-`node server.js`
+1. **SSE temps réel** — mise à jour instantanée lorsque la connexion permanente est acceptée par le navigateur/réseau.
+2. **Polling de secours toutes les 1,5 secondes** — vérifie la révision du serveur et récupère automatiquement les changements si SSE est bloqué ou coupé.
 
-Puis ouvrir :
-`http://localhost:8080`
+Le polling ne télécharge la base complète que lorsqu'une révision plus récente existe.
 
-## Publication
-Lire `DEPLOIEMENT.md`.
+La synchronisation est également forcée :
+- quand l'utilisateur revient sur l'onglet ;
+- quand la fenêtre reprend le focus ;
+- quand la connexion Internet revient.
 
-## Sécurité
-En production, définir obligatoirement :
-- `REXS_ACCESS_USER`
-- `REXS_ACCESS_PASSWORD`
+## Indicateur
+- `Temps réel connecté` : SSE fonctionne.
+- `Synchronisation active` : SSE est indisponible mais le système de secours fonctionne. Les changements arrivent automatiquement, généralement sous 1 à 2 secondes.
+- `Reconnexion…` : aucun des deux mécanismes ne joint momentanément le serveur.
 
-L'écran PIN des employés reste ensuite la deuxième couche d'accès.
+## Déploiement
+Remplace les fichiers de la V9 dans ton dépôt GitHub par ceux de cette V10 puis laisse Render redéployer.
+
+Le disque persistant `/var/data` n'est pas supprimé par cette mise à jour : les données existantes restent conservées.
+
+## Test
+Ouvre le site sur deux appareils différents.
+1. Connecte les deux utilisateurs.
+2. Modifie un stock ou le solde sur le premier.
+3. Le deuxième doit se mettre à jour automatiquement sans déconnexion.

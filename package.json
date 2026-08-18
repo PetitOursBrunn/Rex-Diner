@@ -1,8 +1,8 @@
 {
   "name": "rexs-diner-pos-v8",
-  "version": "9.0.0",
+  "version": "10.0.0",
   "private": true,
-  "description": "Rex's Diner POS multi-utilisateur temps réel, prêt pour hébergement Internet",
+  "description": "Rex's Diner POS multi-utilisateur avec synchronisation hybride SSE + polling",
   "scripts": {
     "start": "node server.js"
   },

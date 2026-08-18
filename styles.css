@@ -44,3 +44,6 @@
 .sync-settings p{color:var(--muted);font-size:10px;line-height:1.5}
 .sync-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.sync-info-grid>div{padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff}.sync-info-grid span{display:block;color:var(--muted);font-size:8px;text-transform:uppercase;letter-spacing:.8px}.sync-info-grid strong{display:block;margin-top:3px;font-size:11px}
 @media(max-width:760px){.realtime-status span{display:none}.realtime-status{padding:8px}.sync-info-grid{grid-template-columns:1fr}}
+
+/* V10 — synchronisation hybride SSE + polling */
+.realtime-status.online{min-width:132px;justify-content:center}
