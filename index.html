@@ -147,7 +147,6 @@
         </section>
 
         <section id="view-pos" class="view">
-          <button type="button" id="mobileCartButton" class="mobile-cart-button">🧾 <span>Voir le ticket</span><strong id="mobileCartCount">0</strong></button>
           <div class="pos-shell">
             <div class="catalog panel">
               <div class="catalog-toolbar">
@@ -338,24 +337,22 @@
         <section id="view-settings" class="view">
           <div class="section-head"><div><span class="kicker">CONFIGURATION</span><h2>Réglages</h2><p>Paramètres généraux et sauvegarde des données.</p></div></div>
           <div class="settings-grid">
-            <div class="settings-card theme-settings">
+
+            <article class="panel settings-card theme-settings">
               <span class="kicker">APPARENCE</span>
               <h3>Thème du site</h3>
-              <p>Choisis entre le thème clair et le thème sombre. Le choix est mémorisé sur cet appareil.</p>
-              <div class="theme-choice">
-                <div class="theme-choice-copy">
-                  <div class="theme-preview-icon" id="themePreviewIcon">☀️</div>
-                  <div>
-                    <strong id="themeModeLabel">Thème clair</strong>
-                    <small>Interface générale de Rex's Diner</small>
-                  </div>
+              <p>Active le thème sombre pour une utilisation plus confortable. Ce choix est mémorisé uniquement sur cet appareil.</p>
+              <div class="theme-toggle-row">
+                <div>
+                  <strong id="themeModeLabel">Thème clair</strong>
+                  <small id="themeModeDescription">Interface lumineuse</small>
                 </div>
-                <label class="theme-switch" aria-label="Activer le thème sombre">
+                <label class="switch" aria-label="Activer le thème sombre">
                   <input id="darkThemeToggle" type="checkbox" />
-                  <span class="theme-slider"></span>
+                  <span class="slider"></span>
                 </label>
               </div>
-            </div>
+            </article>
 
             <article class="panel settings-card"><span class="kicker">RESTAURANT</span><h3>Informations</h3><label>Nom du restaurant<input value="Rex's Diner" disabled /></label><label>Devise de référence<input value="Dollar ($)" disabled /></label><label>Taux de change<input value="1 $ = 23 pesos" disabled /></label></article>
             <article class="panel settings-card"><span class="kicker">VENTES & STOCK</span><h3>Paramètres</h3><label>Seuil de stock faible<input id="lowStockThreshold" type="number" min="1" max="999" /></label><label>TVA indicative (%)<input id="taxRate" type="number" min="0" max="100" step="0.1" /></label><button type="button" id="saveSettings" class="button button-primary">Enregistrer</button></article>
@@ -485,25 +482,5 @@
   </dialog>
 
   <script src="app.js"></script>
-
-  <nav id="mobileNav" class="mobile-nav" aria-label="Navigation mobile">
-    <button type="button" data-mobile-view="dashboard"><span>⌂</span><small>Accueil</small></button>
-    <button type="button" data-mobile-view="pos" class="active"><span>▣</span><small>Caisse</small></button>
-    <button type="button" data-mobile-view="stock" data-min-role="2"><span>▦</span><small>Stocks</small></button>
-    <button type="button" data-mobile-view="supplies" data-min-role="2"><span>◈</span><small>Matières</small></button>
-    <button type="button" id="mobileMoreBtn"><span>•••</span><small>Plus</small></button>
-  </nav>
-
-  <div id="mobileMoreMenu" class="mobile-more-menu hidden">
-    <div class="mobile-more-sheet">
-      <div class="mobile-more-head"><strong>Navigation</strong><button type="button" id="closeMobileMore">×</button></div>
-      <button type="button" data-mobile-view="sales" data-min-role="2">↗ <span>Ventes</span></button>
-      <button type="button" data-mobile-view="drawer" data-min-role="2">₱ <span>Fonds de caisse</span></button>
-      <button type="button" data-mobile-view="employees" data-min-role="3">♟ <span>Employés</span></button>
-      <button type="button" data-mobile-view="journal" data-min-role="2">≡ <span>Journal</span></button>
-      <button type="button" data-mobile-view="settings" data-min-role="3">⚙ <span>Réglages</span></button>
-    </div>
-  </div>
-
 </body>
 </html>

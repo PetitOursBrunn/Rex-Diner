@@ -1,26 +1,32 @@
-# Rex's Diner — Caisse & Gestion V12.1 Mobile + Thème sombre
+# Rex's Diner — V11.1 Thème sombre
 
-Cette version corrige l'option de thème sombre dans la V12.
+Cette version repart directement de la V11 fonctionnelle.
 
-## Thème sombre
-- visible dans Réglages > Apparence
-- interrupteur clair / sombre
-- fonctionne sur PC et téléphone
-- choix mémorisé localement sur chaque appareil
-- adapte la caisse, stocks, ventes, matières premières, employés, fonds de caisse, dialogues et navigation mobile
-- n'affecte pas les données synchronisées entre utilisateurs
+## Différences par rapport à la V11
+Une seule fonctionnalité a été ajoutée :
+- un interrupteur `Thème sombre` dans Réglages > Apparence.
 
-## Mobile
-Toutes les optimisations de la V12 sont conservées :
-- navigation basse
-- boutons tactiles
-- catalogue mobile
-- tableaux en cartes
-- ticket optimisé
-- formulaires mobiles
-- synchronisation temps réel
+Le thème est mémorisé localement sur chaque appareil.
+
+## Inchangé par rapport à la V11
+- écran de connexion
+- sélection des profils
+- PIN
+- rôles Employé / Manager / Patron
+- synchronisation temps réel + fallback
+- caisse
+- ventes
+- stocks
+- commandes de matières premières
+- fonds global en pesos
+- ajout manuel de dollars et conversion ×23
+- employés
+- journal
+- sauvegardes
+- serveur Render et stockage persistant
+
+Aucune logique mobile de la V12 n'a été conservée afin d'éviter toute régression sur la connexion.
 
 ## Mise à jour Render
-Remplace les fichiers de la V12 actuelle dans GitHub par ceux de ce ZIP.
-Render redéploiera automatiquement.
+Remplace les fichiers actuels du dépôt GitHub par ceux de ce ZIP.
 Ne supprime pas le disque persistant `/var/data`.

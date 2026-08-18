@@ -283,40 +283,23 @@
     refreshSyncBadge();
   });
 
-  function getStoredTheme(){
-    return localStorage.getItem(THEME_KEY) || 'light';
-  }
 
-  function refreshThemeUI(){
-    const dark=document.documentElement.classList.contains('dark-theme');
-    const toggle=$('#darkThemeToggle');
-    const label=$('#themeModeLabel');
-    const icon=$('#themePreviewIcon');
-    if(toggle) toggle.checked=dark;
-    if(label) label.textContent=dark?'Thème sombre':'Thème clair';
-    if(icon) icon.textContent=dark?'🌙':'☀️';
-  }
-
+  function getStoredTheme(){ return localStorage.getItem(THEME_KEY)||'light'; }
   function applyTheme(theme){
     const dark=theme==='dark';
     document.documentElement.classList.toggle('dark-theme',dark);
+    const toggle=$('#darkThemeToggle');
+    const label=$('#themeModeLabel');
+    const desc=$('#themeModeDescription');
+    if(toggle)toggle.checked=dark;
+    if(label)label.textContent=dark?'Thème sombre':'Thème clair';
+    if(desc)desc.textContent=dark?'Interface sombre':'Interface lumineuse';
     localStorage.setItem(THEME_KEY,dark?'dark':'light');
-    refreshThemeUI();
   }
-
   function toggleTheme(enabled){
     applyTheme(enabled?'dark':'light');
     toast(enabled?'Thème sombre activé':'Thème clair activé');
   }
-
-  function bindThemeToggle(){
-    const toggle=$('#darkThemeToggle');
-    if(!toggle)return;
-    toggle.checked=getStoredTheme()==='dark';
-    toggle.onchange=e=>toggleTheme(e.target.checked);
-    refreshThemeUI();
-  }
-
 
   function roleLevel(role){ return role==='Patron'?3:role==='Manager'?2:1; }
   function can(level){ return !!state.currentUser && roleLevel(state.currentUser.role)>=level; }
@@ -646,7 +629,7 @@
 
   function renderJournal(){ const q=state.journalSearch.toLowerCase().trim();const list=data.journal.filter(j=>`${j.employee} ${j.action} ${j.detail}`.toLowerCase().includes(q));$('#journalTable').innerHTML=list.length?list.map(j=>`<tr><td>${formatDate(j.date)}</td><td>${escapeHtml(j.employee)}</td><td><b>${escapeHtml(j.action)}</b></td><td>${escapeHtml(j.detail)}</td></tr>`).join(''):'<tr><td colspan="4" class="empty-table">Aucune activité enregistrée.</td></tr>'; }
 
-  function exportData(){ const payload={version:12,exportedAt:nowISO(),data}; downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`rexs-diner-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);toast('Sauvegarde téléchargée'); }
+  function exportData(){ const payload={version:11,exportedAt:nowISO(),data}; downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`rexs-diner-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);toast('Sauvegarde téléchargée'); }
   function importData(file){ const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result);const source=parsed.data||parsed;if(!Array.isArray(source.products)||!Array.isArray(source.employees))throw new Error();confirmAction('Importer cette sauvegarde ?','Les données actuelles seront remplacées.',()=>{Object.assign(data,fresh(),source);save();log('Sauvegarde','Données importées');renderAll();renderLogin();toast('Sauvegarde importée');});}catch{toast('Fichier de sauvegarde invalide');}};reader.readAsText(file); }
   function downloadBlob(blob,name){ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500); }
 
@@ -707,5 +690,9 @@
 
   // Clock
   function tick(){ $('#clock').textContent=new Date().toLocaleTimeString('fr-BE',{hour:'2-digit',minute:'2-digit'}); } tick();setInterval(tick,1000);
-  applyTheme(getStoredTheme());bindMobileUI();bindThemeToggle();renderLogin();renderPin();initRealtime();
+
+  const darkThemeToggle=$('#darkThemeToggle');
+  if(darkThemeToggle) darkThemeToggle.onchange=e=>toggleTheme(e.target.checked);
+
+  applyTheme(getStoredTheme());renderLogin();renderPin();initRealtime();
 })();
