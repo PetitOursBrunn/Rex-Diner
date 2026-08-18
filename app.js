@@ -570,34 +570,29 @@
     data.drawerMovements=data.drawerMovements.slice(0,500);
   }
 
-  function openDollarDrawerDialog(){
-    if(!can(2)){toast('Accès refusé');return;}
-    $('#drawerDollarAmount').value='';
-    $('#drawerDollarReason').value='';
-    $('#drawerDollarPreview').textContent=peso(0);
-    openDialog('dollarDrawerDialog');
-    setTimeout(()=>$('#drawerDollarAmount').focus(),50);
+
+
+  function getDrawerCurrency(){
+    return $('#drawerCurrency')?.value || 'MXN';
   }
-  function updateDollarPreview(){
-    const dollars=Math.max(0,Number($('#drawerDollarAmount').value)||0);
-    $('#drawerDollarPreview').textContent=peso(dollars*EXCHANGE_RATE);
+
+  function drawerInputToPesos(){
+    const amount=Math.max(0,Number($('#drawerAmount')?.value)||0);
+    return getDrawerCurrency()==='USD' ? amount*EXCHANGE_RATE : amount;
   }
-  function addDollarsToDrawer(e){
-    e.preventDefault();
-    if(!can(2)){toast('Accès refusé');return;}
-    const dollars=Math.max(0,Number($('#drawerDollarAmount').value)||0);
-    if(dollars<=0){toast('Indique un montant en dollars');return;}
-    const pesos=dollars*EXCHANGE_RATE;
-    const before=Number(data.cashDrawerPesos||0);
-    const after=before+pesos;
-    const reason=$('#drawerDollarReason').value.trim()||'Ajout manuel de dollars';
-    data.cashDrawerPesos=after;
-    recordDrawerMovement('add_dollars',pesos,before,after,reason,'USD',dollars);
-    save();
-    log('Fonds de caisse',`${dollars.toFixed(2)} $ convertis en ${peso(pesos)} • ${reason}`);
-    closeDialog('dollarDrawerDialog');
-    renderAll();
-    toast(`${dollars.toFixed(2)} $ ajoutés → ${peso(pesos)}`);
+
+  function updateDrawerCurrencyPreview(){
+    const amount=Math.max(0,Number($('#drawerAmount')?.value)||0);
+    const currency=getDrawerCurrency();
+    const pesosValue=currency==='USD'?amount*EXCHANGE_RATE:amount;
+    const box=$('#drawerCurrencyPreview');
+    if(!box)return;
+    const strong=box.querySelector('strong');
+    const span=box.querySelector('span');
+    if(strong)strong.textContent=peso(pesosValue);
+    if(span)span.textContent=currency==='USD'
+      ? `Conversion : ${amount.toFixed(2)} $ × ${EXCHANGE_RATE}`
+      : 'Impact sur le solde global';
   }
 
   function renderDrawer(){
@@ -613,13 +608,17 @@
   function movementLabel(type){return type==='add'?'Ajout':type==='add_dollars'?'Ajout dollars':type==='remove'?'Retrait':type==='set'?'Correction':type==='purchase'?'Achat matières':'Vente espèces';}
   function movementClass(type){return (type==='remove'||type==='purchase')?'cash-movement-negative':type==='set'?'cash-movement-set':'cash-movement-positive';}
   function movementPrefix(type){return (type==='remove'||type==='purchase')?'− ':type==='set'?'= ':'+ ';}
-  function openDrawerDialog(){ if(!can(2)){toast('Accès refusé');return;} state.drawerMode='add'; $('#drawerAmount').value='0'; $('#drawerReason').value=''; $$('[data-drawer-mode]').forEach(b=>b.classList.toggle('active',b.dataset.drawerMode==='add')); renderDrawerDialogSummary(); openDialog('drawerDialog'); }
+  function openDrawerDialog(){
+    if($('#drawerCurrency'))$('#drawerCurrency').value='MXN';
+    setTimeout(updateDrawerCurrencyPreview,0); if(!can(2)){toast('Accès refusé');return;} state.drawerMode='add'; $('#drawerAmount').value='0'; $('#drawerReason').value=''; $$('[data-drawer-mode]').forEach(b=>b.classList.toggle('active',b.dataset.drawerMode==='add')); renderDrawerDialogSummary(); openDialog('drawerDialog'); }
   function renderDrawerDialogSummary(){ $('#drawerCurrentSummary').innerHTML=`<div class="cash-summary-line"><span>Solde global</span><strong>${peso(data.cashDrawerPesos)}</strong></div><div class="cash-summary-line"><span>Équivalent informatif</span><strong>${money(toDollars(data.cashDrawerPesos))}</strong></div><div class="cash-summary-line"><span>Taux appliqué</span><strong>1 $ = 23 pesos</strong></div>`; }
   function saveDrawerAdjustment(e){
     e.preventDefault(); if(!can(2)){toast('Accès refusé');return;}
-    const amount=Math.max(0,Number($('#drawerAmount').value)||0); const reason=$('#drawerReason').value.trim()||'Ajustement manuel'; const before=Number(data.cashDrawerPesos||0); let after=before;
+    const originalAmount=Math.max(0,Number($('#drawerAmount').value)||0);
+    const currency=getDrawerCurrency();
+    const amount=currency==='USD'?originalAmount*EXCHANGE_RATE:originalAmount; const reason=$('#drawerReason').value.trim()||'Ajustement manuel'; const before=Number(data.cashDrawerPesos||0); let after=before;
     if(state.drawerMode==='add')after=before+amount; else if(state.drawerMode==='remove')after=Math.max(0,before-amount); else after=amount;
-    const effectiveAmount=Math.abs(after-before); data.cashDrawerPesos=after; recordDrawerMovement(state.drawerMode,effectiveAmount,before,after,reason,'MXN',effectiveAmount); save(); log('Fonds de caisse',`${peso(before)} → ${peso(after)} • ${reason}`); closeDialog('drawerDialog'); renderAll(); toast('Fonds de caisse mis à jour');
+    const effectiveAmount=Math.abs(after-before); data.cashDrawerPesos=after; recordDrawerMovement(state.drawerMode,effectiveAmount,before,after,reason,'MXN',effectiveAmount,currency,originalAmount); save(); log('Fonds de caisse',`${peso(before)} → ${peso(after)} • ${reason}`); closeDialog('drawerDialog'); renderAll(); toast('Fonds de caisse mis à jour');
   }
 
   function renderEmployees(){ $('#employeeTable').innerHTML=data.employees.map(e=>`<tr><td><div class="employee-cell"><span class="cell-icon">${escapeHtml(e.initials)}</span><b>${escapeHtml(e.name)}</b></div></td><td><span class="status ${e.role==='Patron'?'patron':e.role==='Manager'?'manager':'ok'}">${escapeHtml(e.role)}</span></td><td>••••</td><td><span class="status ${e.active?'ok':'out'}">${e.active?'Actif':'Désactivé'}</span></td><td>${formatDate(e.lastLogin)}</td><td class="right"><div class="table-actions"><button type="button" class="table-action edit" data-edit-employee="${e.id}">Modifier</button>${e.id!==state.currentUser?.id?`<button type="button" class="table-action danger" data-delete-employee="${e.id}">Supprimer</button>`:''}</div></td></tr>`).join(''); $$('[data-edit-employee]').forEach(b=>b.onclick=()=>openEmployeeDialog(Number(b.dataset.editEmployee))); $$('[data-delete-employee]').forEach(b=>b.onclick=()=>deleteEmployee(Number(b.dataset.deleteEmployee))); }
@@ -657,10 +656,8 @@
 
 
 
-  // Ajout manuel de dollars au fonds de caisse
-  if($('#drawerAddDollars')) $('#drawerAddDollars').onclick=openDollarDrawerDialog;
-  if($('#drawerDollarAmount')) $('#drawerDollarAmount').oninput=updateDollarPreview;
-  if($('#dollarDrawerForm')) $('#dollarDrawerForm').addEventListener('submit',addDollarsToDrawer);
+  if($('#drawerCurrency')) $('#drawerCurrency').onchange=updateDrawerCurrencyPreview;
+  if($('#drawerAmount')) $('#drawerAmount').oninput=updateDrawerCurrencyPreview;
 
   // Matières premières / commandes fournisseurs
   $('#addMaterial').onclick=()=>openMaterialDialog();

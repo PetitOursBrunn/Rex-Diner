@@ -130,3 +130,241 @@ html.dark-theme .realtime-status.offline{background:#2a1717;border-color:#5a2a2a
 html.dark-theme .currency-conversion-card{background:#14251d;border-color:#294b39}.dark-theme .currency-conversion-card span{color:#8fb9a3}.dark-theme .currency-conversion-card strong{color:#70d29c}.dark-theme .currency-conversion-card small{color:#8aaa99}
 
 .switch{cursor:pointer}
+
+
+/* V11.2 — thème sombre renforcé */
+html,body,.topbar,.workspace-card,.checkout-card,.inventory-card,.settings-card,.panel,
+.metric-card,.product-card,.employee-chip,.search-box,input,select,textarea,dialog,
+.theme-toggle-row,.sync-info-grid>div,.supply-draft-item,.mobile-more-sheet,
+table,thead,tbody,tr,td,th,.cart-item,.qty-control,.stock-product-summary,
+.login-card,.login-user,.user-selector button,.pin-pad button{
+  transition:background-color .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+
+html.dark-theme{
+  --bg:#0d0f12;
+  --surface:#171a1f;
+  --surface-2:#1f242b;
+  --ink:#f4f6f8;
+  --muted:#aab1bb;
+  --line:#303741;
+  --red:#e05b5b;
+  --red2:#b83d3d;
+  --cream:#d8c79f;
+  --green:#63c895;
+  --orange:#d9a755;
+  --purple:#a49ae0;
+  --shadow:0 16px 42px rgba(0,0,0,.38);
+}
+
+html.dark-theme body{
+  background:#0d0f12!important;
+  color:#f4f6f8!important;
+}
+
+html.dark-theme main,
+html.dark-theme .view{
+  background:#0d0f12!important;
+  color:#f4f6f8!important;
+}
+
+html.dark-theme .topbar{
+  background:rgba(18,21,26,.97)!important;
+  border-color:#303741!important;
+  color:#f4f6f8!important;
+}
+
+html.dark-theme .workspace-card,
+html.dark-theme .checkout-card,
+html.dark-theme .inventory-card,
+html.dark-theme .settings-card,
+html.dark-theme .panel,
+html.dark-theme .metric-card,
+html.dark-theme .product-card,
+html.dark-theme dialog,
+html.dark-theme .employee-chip,
+html.dark-theme .theme-toggle-row,
+html.dark-theme .sync-info-grid>div,
+html.dark-theme .supply-draft-item,
+html.dark-theme .login-card,
+html.dark-theme .login-user{
+  background:#171a1f!important;
+  border-color:#303741!important;
+  color:#f4f6f8!important;
+  box-shadow:0 14px 34px rgba(0,0,0,.24)!important;
+}
+
+html.dark-theme .product-card:hover{
+  background:#1c2026!important;
+  border-color:#48515d!important;
+}
+
+html.dark-theme .search-box,
+html.dark-theme input,
+html.dark-theme select,
+html.dark-theme textarea,
+html.dark-theme .category-tabs button,
+html.dark-theme .movement-tab,
+html.dark-theme .table-action,
+html.dark-theme .icon-action,
+html.dark-theme .quick-qty button,
+html.dark-theme .user-selector button,
+html.dark-theme .pin-pad button{
+  background:#20252c!important;
+  color:#f4f6f8!important;
+  border-color:#343c47!important;
+}
+
+html.dark-theme input::placeholder,
+html.dark-theme textarea::placeholder{
+  color:#77808b!important;
+}
+
+html.dark-theme .category-tabs button.active,
+html.dark-theme .movement-tab.active,
+html.dark-theme .nav-btn.active{
+  background:#343b45!important;
+  color:#fff!important;
+  border-color:#4d5764!important;
+}
+
+html.dark-theme th{
+  background:#20252c!important;
+  color:#b9c0c9!important;
+  border-color:#303741!important;
+}
+
+html.dark-theme td{
+  color:#eef1f4!important;
+  border-color:#2a3038!important;
+}
+
+html.dark-theme tbody tr:hover td{
+  background:#1a1e24!important;
+}
+
+html.dark-theme .empty-icon,
+html.dark-theme .metric-icon,
+html.dark-theme .table-icon,
+html.dark-theme .employee-small-avatar,
+html.dark-theme .qty-control,
+html.dark-theme .stock-product-summary{
+  background:#242a32!important;
+  color:#f4f6f8!important;
+}
+
+html.dark-theme .btn-soft{
+  background:#252b33!important;
+  color:#f0f3f6!important;
+  border-color:#39424d!important;
+}
+
+html.dark-theme .btn-dark{
+  background:#0f1216!important;
+  color:#fff!important;
+}
+
+html.dark-theme .theme-settings{
+  background:linear-gradient(135deg,#171a1f 0%,#1d2229 100%)!important;
+}
+
+html.dark-theme .sync-settings{
+  background:linear-gradient(135deg,#171a1f 0%,#16231d 100%)!important;
+  border-color:#315040!important;
+}
+
+html.dark-theme .danger-zone,
+html.dark-theme .danger-card{
+  background:#211719!important;
+  border-color:#5b3338!important;
+}
+
+html.dark-theme .supply-total-box{
+  background:#0b0d10!important;
+  color:#fff!important;
+}
+
+html.dark-theme .checkout-bottom,
+html.dark-theme .cart-summary{
+  background:#171a1f!important;
+}
+
+html.dark-theme .cart-item{
+  border-color:#2a3038!important;
+}
+
+html.dark-theme .eyebrow,
+html.dark-theme .kicker{
+  color:#f06d6d!important;
+}
+
+html.dark-theme .section-subtitle,
+html.dark-theme .muted,
+html.dark-theme small,
+html.dark-theme .metric-card span,
+html.dark-theme .metric-card small{
+  color:#aab1bb!important;
+}
+
+html.dark-theme .badge.ok{background:#153426!important;color:#71d59f!important}
+html.dark-theme .badge.low{background:#3a2d13!important;color:#e3b35d!important}
+html.dark-theme .badge.out{background:#3b1b1d!important;color:#ef8585!important}
+html.dark-theme .badge.manager{background:#2b2741!important;color:#b8abf0!important}
+html.dark-theme .badge.patron{background:#3c2a18!important;color:#e6b66f!important}
+
+html.dark-theme .realtime-status.online{
+  background:#132a20!important;
+  border-color:#315b46!important;
+  color:#84d8ac!important;
+}
+html.dark-theme .realtime-status.connecting{
+  background:#302716!important;
+  border-color:#695428!important;
+  color:#e4bd68!important;
+}
+html.dark-theme .realtime-status.offline{
+  background:#32191b!important;
+  border-color:#6a3035!important;
+  color:#f18b91!important;
+}
+
+/* Login background darker while preserving contrast */
+html.dark-theme .login-screen{
+  background:
+    radial-gradient(circle at 50% 10%,#20262d 0,#11151a 42%,#090b0e 100%)!important;
+}
+
+/* Sidebar already dark; make selected item more readable */
+html.dark-theme .sidebar{
+  background:#090b0e!important;
+}
+html.dark-theme .service-card{
+  background:#14181d!important;
+  border-color:#2b323b!important;
+}
+
+
+/* V11.2 — montant + devise sur une même ligne */
+.drawer-amount-currency{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 145px;
+  gap:10px;
+  align-items:end;
+}
+.drawer-amount-currency label{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+.drawer-amount-currency input,
+.drawer-amount-currency select{
+  width:100%;
+}
+.drawer-currency-preview{
+  margin-top:8px;
+}
+@media(max-width:520px){
+  .drawer-amount-currency{
+    grid-template-columns:minmax(0,1fr) 120px;
+  }
+}

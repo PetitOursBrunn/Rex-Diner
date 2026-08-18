@@ -1,32 +1,41 @@
-# Rex's Diner — V11.1 Thème sombre
+# Rex's Diner — V11.2
 
-Cette version repart directement de la V11 fonctionnelle.
+Cette version conserve la logique et les fonctionnalités de la V11 actuelle.
 
-## Différences par rapport à la V11
-Une seule fonctionnalité a été ajoutée :
-- un interrupteur `Thème sombre` dans Réglages > Apparence.
+## Modifications uniquement
 
-Le thème est mémorisé localement sur chaque appareil.
+### Thème sombre
+Le bouton Réglages > Apparence modifie maintenant réellement l'ensemble du site :
+- fond général plus sombre
+- panneaux, tableaux, caisse, formulaires et dialogues assombris
+- contrastes renforcés
+- textes clairs et secondaires lisibles
+- couleurs d'état adaptées
+- écran de connexion et barre latérale harmonisés
 
-## Inchangé par rapport à la V11
-- écran de connexion
-- sélection des profils
-- PIN
-- rôles Employé / Manager / Patron
-- synchronisation temps réel + fallback
+Le thème reste mémorisé uniquement sur l'appareil utilisé.
+
+### Fonds de caisse : Pesos ou Dollars
+L'ajout manuel se fait désormais dans le même formulaire :
+- champ Montant
+- sélection de devise juste à côté : `Pesos` ou `Dollars`
+- si Dollars est choisi, conversion automatique à `1 $ = 23 pesos`
+- aperçu du montant réellement ajouté au solde global
+- le solde global reste toujours exprimé en pesos
+
+Exemple :
+100 dollars → +2 300 pesos.
+
+## Tout le reste est inchangé
+- profils et connexion
+- rôles/PIN
+- synchronisation temps réel
 - caisse
 - ventes
 - stocks
-- commandes de matières premières
-- fonds global en pesos
-- ajout manuel de dollars et conversion ×23
+- matières premières
+- commandes fournisseurs
 - employés
 - journal
-- sauvegardes
-- serveur Render et stockage persistant
-
-Aucune logique mobile de la V12 n'a été conservée afin d'éviter toute régression sur la connexion.
-
-## Mise à jour Render
-Remplace les fichiers actuels du dépôt GitHub par ceux de ce ZIP.
-Ne supprime pas le disque persistant `/var/data`.
+- hébergement Render
+- stockage persistant `/var/data`

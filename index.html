@@ -296,7 +296,6 @@
 
         <section id="view-drawer" class="view">
           <div class="drawer-dollar-shortcut">
-            <button type="button" id="drawerAddDollars" class="button button-dollar">💵 Ajouter des dollars</button>
           </div>
           <div class="section-head">
             <div><span class="kicker">TRÉSORERIE</span><h2>Fonds de caisse</h2><p>Un seul solde global en pesos. Les paiements en dollars sont convertis automatiquement au taux ×23.</p></div>
@@ -414,44 +413,28 @@
       <header><div><span class="kicker">FONDS DE CAISSE</span><h3>Ajuster l'argent disponible</h3></div><button type="button" class="dialog-close" data-close-dialog="drawerDialog">×</button></header>
       <div id="drawerCurrentSummary" class="summary-box"></div>
       <div class="mode-tabs" id="drawerModeTabs"><button type="button" class="active" data-drawer-mode="add">＋ Ajouter</button><button type="button" data-drawer-mode="remove">− Retirer</button><button type="button" data-drawer-mode="set">= Définir</button></div>
-      <label>Montant en pesos<input id="drawerAmount" type="number" min="0" step="0.01" value="0" required /></label>
+      
+        <div class="drawer-amount-currency">
+          <label>Montant
+            <input id="drawerAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" />
+          </label>
+          <label>Devise
+            <select id="drawerCurrency">
+              <option value="MXN">Pesos</option>
+              <option value="USD">Dollars</option>
+            </select>
+          </label>
+        </div>
+        <div id="drawerCurrencyPreview" class="conversion-preview drawer-currency-preview">
+          <span>Impact sur le solde global</span>
+          <strong>0 pesos</strong>
+        </div>
+
       <label>Motif / note<input id="drawerReason" maxlength="80" placeholder="Ex. Fonds de départ, retrait patron..." /></label>
       <footer><button type="button" class="button button-soft" data-close-dialog="drawerDialog">Annuler</button><button type="submit" class="button button-primary">Valider l'ajustement</button></footer>
     </form>
   </dialog>
-
-
-
-  <dialog id="dollarDrawerDialog" class="dialog small-dialog">
-    <form method="dialog" id="dollarDrawerForm">
-      <header>
-        <div><span class="kicker">FONDS DE CAISSE</span><h3>Ajouter des dollars</h3></div>
-        <button type="button" class="dialog-close" data-close-dialog="dollarDrawerDialog">×</button>
-      </header>
-      <div class="currency-conversion-card">
-        <div><span>Taux fixe</span><strong>1 $ = 23 pesos</strong></div>
-        <small>Les dollars saisis sont immédiatement convertis et ajoutés au solde global en pesos.</small>
-      </div>
-      <div class="form-stack">
-        <label>Montant en dollars ($)
-          <input id="drawerDollarAmount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="100" required />
-        </label>
-        <div class="conversion-preview">
-          <span>Montant ajouté au solde</span>
-          <strong id="drawerDollarPreview">0 pesos</strong>
-        </div>
-        <label>Motif / note
-          <input id="drawerDollarReason" maxlength="100" placeholder="Ex. Apport espèces en dollars" />
-        </label>
-      </div>
-      <footer>
-        <button type="button" class="button button-soft" data-close-dialog="dollarDrawerDialog">Annuler</button>
-        <button type="submit" class="button button-dollar">Convertir & ajouter</button>
-      </footer>
-    </form>
-  </dialog>
-
-  <dialog id="materialDialog" class="dialog small-dialog">
+<dialog id="materialDialog" class="dialog small-dialog">
     <form method="dialog" id="materialForm">
       <header>
         <div><span class="kicker">MATIÈRE PREMIÈRE</span><h3 id="materialDialogTitle">Ajouter une matière</h3></div>

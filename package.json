@@ -1,8 +1,8 @@
 {
   "name": "rexs-diner-pos-v8",
-  "version": "11.1.0",
+  "version": "11.2.0",
   "private": true,
-  "description": "Rex's Diner V11 identique avec thème sombre activable",
+  "description": "Rex's Diner V11 identique avec thème sombre renforcé et ajout de caisse multi-devise",
   "scripts": {
     "start": "node server.js"
   },
