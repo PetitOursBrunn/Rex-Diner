@@ -1,4 +1,4 @@
-# Rex's Diner — V11.12.0
+# Rex's Diner — V11.13.0
 
 Cette version corrige le problème où certains utilisateurs voyaient encore une ancienne version après un nouveau déploiement.
 
@@ -11,7 +11,7 @@ Cette version corrige le problème où certains utilisateurs voyaient encore une
 
 ## Vérification
 Dans Réglages > Synchronisation, la version doit afficher :
-`11.12.0`
+`11.13.0`
 
 Si ton collègue voit une ancienne version, après déploiement de cette V11.8 :
 1. il ouvre le lien normalement ;
@@ -49,3 +49,11 @@ Tout le reste reste identique à la V11.6.
 ## Nouveautés V11.12.0 — permissions par grade
 
 Le patron peut configurer les accès des grades Employé et Manager aux sections (caisse, stocks, matières, ventes, fonds de caisse, journal, réglages) et aux actions sensibles (ajustement manuel du fonds, modification des stocks, commandes fournisseurs, effacement des ventes et du journal). Le grade Patron conserve toujours l’accès complet.
+
+
+## Nouveautés V11.13.0 — menus composés
+- Création, modification et suppression de menus depuis la gestion des stocks.
+- Un menu possède un nom, un prix, une icône et une composition en produits existants.
+- La caisse calcule la disponibilité d’un menu à partir du stock réel de ses composants.
+- Lors de la confirmation d’une vente, chaque élément du menu est automatiquement retiré du stock avec sa quantité.
+- Les besoins sont cumulés entre produits vendus seuls et produits présents dans plusieurs menus afin d’éviter tout dépassement de stock.

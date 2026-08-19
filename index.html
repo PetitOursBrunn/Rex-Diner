@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#12100f" />
   <title>Rex's Diner — Caisse & Gestion</title>
-  <link rel="stylesheet" href="styles.css?v=11.11.0" />
-  <meta name="rexs-build" content="11.9.1" />
+  <link rel="stylesheet" href="styles.css?v=11.13.0" />
+  <meta name="rexs-build" content="11.13.0" />
 </head>
 <body>
   <div id="loginView" class="login-view">
@@ -203,9 +203,10 @@
         <section id="view-stock" class="view">
           <div class="section-head">
             <div><span class="kicker">INVENTAIRE</span><h2>Gestion des stocks</h2><p>Ajoute, retire ou corrige les quantités et gère ton catalogue.</p></div>
-            <button type="button" id="addProduct" class="button button-primary">＋ Ajouter un produit</button>
+            <div class="head-actions"><button type="button" id="addMenu" class="button button-soft">🍽️ Créer un menu</button><button type="button" id="addProduct" class="button button-primary">＋ Ajouter un produit</button></div>
           </div>
           <div id="stockMetrics" class="metrics"></div>
+          <article class="panel menu-manager-panel"><div class="panel-heading"><div><span class="kicker">MENUS</span><h3>Menus composés</h3><p>Regroupe plusieurs produits dans un menu. À l’encaissement, chaque composant est retiré automatiquement du stock.</p></div></div><div id="menuManagerList" class="menu-manager-list"></div></article>
           <div class="panel table-panel">
             <div class="table-toolbar">
               <label class="search"><span>⌕</span><input id="stockSearch" placeholder="Rechercher dans le stock..." /></label>
@@ -379,6 +380,21 @@
     </form>
   </dialog>
 
+
+  <dialog id="menuDialog" class="dialog">
+    <form method="dialog" id="menuForm">
+      <header><div><span class="kicker">CATALOGUE</span><h3 id="menuDialogTitle">Créer un menu</h3></div><button type="button" class="dialog-close" data-close-dialog="menuDialog">×</button></header>
+      <input id="menuId" type="hidden" />
+      <div class="form-grid">
+        <label>Nom du menu<input id="menuName" required maxlength="60" placeholder="Ex. Menu Classic" /></label>
+        <label>Prix du menu ($)<input id="menuPrice" type="number" min="0" step="0.10" required /></label>
+        <label>Emoji / icône<input id="menuIcon" maxlength="4" placeholder="🍽️" /></label>
+      </div>
+      <div class="menu-items-block"><div class="panel-heading compact"><div><span class="kicker">COMPOSITION</span><h4>Produits retirés du stock</h4></div><button type="button" id="addMenuItem" class="button button-soft">＋ Ajouter un élément</button></div><div id="menuItemsEditor" class="menu-items-editor"></div></div>
+      <footer><button type="button" class="button button-soft" data-close-dialog="menuDialog">Annuler</button><button type="submit" class="button button-primary">Enregistrer le menu</button></footer>
+    </form>
+  </dialog>
+
   <dialog id="stockDialog" class="dialog small-dialog">
     <form method="dialog" id="stockForm">
       <header><div><span class="kicker">MOUVEMENT DE STOCK</span><h3>Modifier le stock</h3></div><button type="button" class="dialog-close" data-close-dialog="stockDialog">×</button></header>
@@ -498,6 +514,6 @@
     <footer><button type="button" class="button button-soft" data-close-dialog="confirmDialog">Annuler</button><button type="button" id="confirmButton" class="button button-danger">Confirmer</button></footer>
   </dialog>
 
-  <script src="app.js?v=11.11.0"></script>
+  <script src="app.js?v=11.13.0"></script>
 </body>
 </html>
