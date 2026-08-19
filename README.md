@@ -1,4 +1,4 @@
-# Rex's Diner — V11.11.0
+# Rex's Diner — V11.12.0
 
 Cette version corrige le problème où certains utilisateurs voyaient encore une ancienne version après un nouveau déploiement.
 
@@ -11,7 +11,7 @@ Cette version corrige le problème où certains utilisateurs voyaient encore une
 
 ## Vérification
 Dans Réglages > Synchronisation, la version doit afficher :
-`11.11.0`
+`11.12.0`
 
 Si ton collègue voit une ancienne version, après déploiement de cette V11.8 :
 1. il ouvre le lien normalement ;
@@ -44,3 +44,8 @@ Tout le reste reste identique à la V11.6.
 - À chaque fin de cycle, le salaire est automatiquement déduit du fond de caisse.
 - Tant que l’employé reste en service, le minuteur redémarre automatiquement pour le cycle suivant.
 - Les prélèvements sont effectués côté serveur et inscrits dans les mouvements de caisse et le journal.
+
+
+## Nouveautés V11.12.0 — permissions par grade
+
+Le patron peut configurer les accès des grades Employé et Manager aux sections (caisse, stocks, matières, ventes, fonds de caisse, journal, réglages) et aux actions sensibles (ajustement manuel du fonds, modification des stocks, commandes fournisseurs, effacement des ventes et du journal). Le grade Patron conserve toujours l’accès complet.

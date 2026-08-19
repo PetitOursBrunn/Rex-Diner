@@ -46,6 +46,11 @@
     discounts: [
       {id:1,name:'5 %',percent:5},{id:2,name:'10 %',percent:10},{id:3,name:'15 %',percent:15},{id:4,name:'20 %',percent:20}
     ],
+    rolePermissions: {
+      'Employé': {dashboard:true,pos:true,stock:false,supplies:false,sales:false,drawer:false,journal:false,settings:false,employees:false,adjustDrawer:false,manageStock:false,manageSupplies:false,clearSales:false,clearJournal:false},
+      'Manager': {dashboard:true,pos:true,stock:true,supplies:true,sales:true,drawer:true,journal:true,settings:false,employees:false,adjustDrawer:true,manageStock:true,manageSupplies:true,clearSales:false,clearJournal:false},
+      'Patron': {dashboard:true,pos:true,stock:true,supplies:true,sales:true,drawer:true,journal:true,settings:true,employees:true,adjustDrawer:true,manageStock:true,manageSupplies:true,clearSales:true,clearJournal:true}
+    },
     supplyOrders: [], payrollTransactions:[], payrollAppliedTotalPesos:0, cashDrawerPesos:0, exchangeRate:EXCHANGE_RATE, lowStockThreshold:5, taxRate:10
   };
 
@@ -62,6 +67,10 @@
     if(!target.productCategories.length)target.productCategories=['Autres'];
     if(!Array.isArray(target.discounts)) target.discounts=fresh().discounts;
     if(!Array.isArray(target.employees)) target.employees=[];
+    const defaultPerms=fresh().rolePermissions;
+    if(!target.rolePermissions||typeof target.rolePermissions!=='object')target.rolePermissions={};
+    ['Employé','Manager','Patron'].forEach(role=>{target.rolePermissions[role]={...defaultPerms[role],...(target.rolePermissions[role]||{})};});
+    target.rolePermissions.Patron={...defaultPerms.Patron};
     target.employees.forEach(e=>{
       e.salaryPesos=Math.max(0,Number(e.salaryPesos)||0);
       e.payrollIntervalMinutes=Math.max(1,Number(e.payrollIntervalMinutes)||60);
@@ -330,7 +339,7 @@
   }
 
 
-  const CLIENT_BUILD='11.11.0';
+  const CLIENT_BUILD='11.12.0';
   let buildCheckTimer=null;
 
   async function checkForNewBuild(force=false){
@@ -361,6 +370,12 @@
 
   function roleLevel(role){ return role==='Patron'?3:role==='Manager'?2:1; }
   function can(level){ return !!state.currentUser && roleLevel(state.currentUser.role)>=level; }
+  function hasPermission(key){
+    if(!state.currentUser)return false;
+    if(state.currentUser.role==='Patron')return true;
+    return !!data.rolePermissions?.[state.currentUser.role]?.[key];
+  }
+  function requirePermission(key){ if(hasPermission(key))return true; toast('Accès refusé'); return false; }
   function toast(msg){ const el=$('#toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toast.timer); toast.timer=setTimeout(()=>el.classList.remove('show'),1800); }
   function log(action,detail,user=state.currentUser){ data.journal.unshift({id:Date.now()+Math.random(),date:nowISO(),employee:user?.name||'Système',action,detail}); data.journal=data.journal.slice(0,500); save(); renderJournal(); }
   function statusFor(stock){ return stock<=0?{label:'Rupture',cls:'out'}:stock<=Number(data.lowStockThreshold)?{label:'Stock faible',cls:'low'}:{label:'Disponible',cls:'ok'}; }
@@ -417,13 +432,16 @@
   function lockApp(){ if(state.currentUser) log('Verrouillage','Caisse verrouillée'); state.currentUser=null; state.cart=[]; state.orderNote=''; state.discount=0; $('#app').classList.add('hidden'); $('#loginView').classList.remove('hidden'); $('#userMenu').classList.add('hidden'); renderLogin(); renderPin(); }
   function logout(){ lockApp(); }
   function applyPermissions(){
-    $$('#nav [data-min-role]').forEach(b=>b.classList.toggle('hidden',!can(Number(b.dataset.minRole))));
-    $$('.patron-only').forEach(el=>el.classList.toggle('hidden',!can(3)));
+    $$('#nav [data-view]').forEach(b=>b.classList.toggle('hidden',!hasPermission(b.dataset.view)));
+    $$('.patron-only').forEach(el=>el.classList.toggle('hidden',!hasPermission(el.id==='clearSales'?'clearSales':el.id==='clearJournal'?'clearJournal':'employees')));
+    const adjust=$('#adjustDrawer'); if(adjust)adjust.classList.toggle('hidden',!hasPermission('adjustDrawer'));
+    ['addProduct'].forEach(id=>{const el=$('#'+id);if(el)el.classList.toggle('hidden',!hasPermission('manageStock'));});
+    ['addMaterial','sortMaterialsAZ','submitSupplyOrder'].forEach(id=>{const el=$('#'+id);if(el)el.classList.toggle('hidden',!hasPermission('manageSupplies'));});
   }
 
-  const viewMeta={dashboard:['TABLEAU DE BORD','Accueil',1],pos:['CAISSE','Caisse enregistreuse',1],stock:['INVENTAIRE','Gestion des stocks',2],supplies:['APPROVISIONNEMENT','Matières premières',2],sales:['ACTIVITÉ','Ventes',2],drawer:['TRÉSORERIE','Fonds de caisse',2],employees:['ÉQUIPE','Employés & permissions',3],journal:['SÉCURITÉ','Journal d’activité',2],settings:['CONFIGURATION','Réglages',3]};
+  const viewMeta={dashboard:['TABLEAU DE BORD','Accueil'],pos:['CAISSE','Caisse enregistreuse'],stock:['INVENTAIRE','Gestion des stocks'],supplies:['APPROVISIONNEMENT','Matières premières'],sales:['ACTIVITÉ','Ventes'],drawer:['TRÉSORERIE','Fonds de caisse'],employees:['ÉQUIPE','Employés & permissions'],journal:['SÉCURITÉ','Journal d’activité'],settings:['CONFIGURATION','Réglages']};
   function switchView(view){
-    const meta=viewMeta[view]; if(!meta) return; if(!can(meta[2])){ toast('Accès refusé'); return; }
+    const meta=viewMeta[view]; if(!meta) return; if(!hasPermission(view)){ toast('Accès refusé'); return; }
     state.view=view; $$('.view').forEach(v=>v.classList.remove('active')); $(`#view-${view}`).classList.add('active');
     $$('#nav [data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view)); $('#viewKicker').textContent=meta[0]; $('#viewTitle').textContent=meta[1]; $('#userMenu').classList.add('hidden');
     if(view==='dashboard') renderDashboard(); if(view==='pos') renderPOS(); if(view==='stock') renderStock(); if(view==='supplies') renderSupplies(); if(view==='sales') renderSales(); if(view==='drawer') renderDrawer(); if(view==='employees') renderEmployees(); if(view==='journal') renderJournal();
@@ -442,7 +460,7 @@
       metric('!','Stock faible',lowCount(),'produits à surveiller',lowCount()?'warn':''),
       metric('×','Ruptures',outCount(),'produits indisponibles',outCount()?'danger':'')
     ].join('');
-    const actions=[{label:'Nouvelle vente',sub:'Ouvrir la caisse',icon:'▣',view:'pos',level:1},{label:'Gérer le stock',sub:'Quantités & produits',icon:'▦',view:'stock',level:2},{label:'Commander matières',sub:'Achats en pesos',icon:'◈',view:'supplies',level:2},{label:'Voir les ventes',sub:'Historique & chiffres',icon:'↗',view:'sales',level:2},{label:'Fonds de caisse',sub:'Solde global en pesos',icon:'◫',view:'drawer',level:2},{label:'Gérer l’équipe',sub:'Comptes & PIN',icon:'♟',view:'employees',level:3}].filter(a=>can(a.level));
+    const actions=[{label:'Nouvelle vente',sub:'Ouvrir la caisse',icon:'▣',view:'pos'},{label:'Gérer le stock',sub:'Quantités & produits',icon:'▦',view:'stock'},{label:'Commander matières',sub:'Achats en pesos',icon:'◈',view:'supplies'},{label:'Voir les ventes',sub:'Historique & chiffres',icon:'↗',view:'sales'},{label:'Fonds de caisse',sub:'Solde global en pesos',icon:'◫',view:'drawer'},{label:'Gérer l’équipe',sub:'Comptes & PIN',icon:'♟',view:'employees'}].filter(a=>hasPermission(a.view));
     $('#dashboardActions').innerHTML=actions.map(a=>`<button type="button" class="quick-action" data-dashboard-view="${a.view}"><span class="qa-icon">${a.icon}</span><span><b>${a.label}</b><small>${a.sub}</small></span></button>`).join('');
     $$('[data-dashboard-view]').forEach(b=>b.onclick=()=>switchView(b.dataset.dashboardView));
     $('#stockHealthText').textContent=outCount()?`${outCount()} rupture(s) et ${lowCount()} stock(s) faible(s)`:(lowCount()?`${lowCount()} produit(s) à surveiller`:'Aucune alerte de stock');
@@ -581,7 +599,7 @@
   function renderStock(){
     $('#stockMetrics').innerHTML=[metric('▦','Produits',data.products.length,'références'),metric('!','Stock faible',lowCount(),'à surveiller',lowCount()?'warn':''),metric('×','Ruptures',outCount(),'indisponibles',outCount()?'danger':''),metric('$','Valeur stock',money(data.products.reduce((s,p)=>s+p.price*p.stock,0)),'prix de vente','teal')].join('');
     const q=state.stockSearch.toLowerCase().trim(); let list=data.products.filter(p=>p.name.toLowerCase().includes(q)||p.category.toLowerCase().includes(q)); if(state.stockFilter==='low')list=list.filter(p=>p.stock>0&&p.stock<=Number(data.lowStockThreshold)); if(state.stockFilter==='out')list=list.filter(p=>p.stock<=0);
-    $('#stockTable').innerHTML=list.length?list.map(p=>{const st=statusFor(p.stock);return `<tr><td><div class="product-cell"><span class="cell-icon">${p.icon||'🍽️'}</span><b>${escapeHtml(p.name)}</b></div></td><td>${escapeHtml(p.category)}</td><td>${money(p.price)}</td><td><b>${p.stock}</b></td><td><span class="status ${st.cls}">${st.label}</span></td><td class="right"><div class="table-actions"><button type="button" class="table-action stock" data-stock="${p.id}">± Stock</button><button type="button" class="table-action edit" data-edit-product="${p.id}">Modifier</button><button type="button" class="table-action danger" data-delete-product="${p.id}">Supprimer</button></div></td></tr>`}).join(''):'<tr><td colspan="6" class="empty-table">Aucun produit trouvé.</td></tr>';
+    $('#stockTable').innerHTML=list.length?list.map(p=>{const st=statusFor(p.stock);return `<tr><td><div class="product-cell"><span class="cell-icon">${p.icon||'🍽️'}</span><b>${escapeHtml(p.name)}</b></div></td><td>${escapeHtml(p.category)}</td><td>${money(p.price)}</td><td><b>${p.stock}</b></td><td><span class="status ${st.cls}">${st.label}</span></td><td class="right">${hasPermission('manageStock')?`<div class="table-actions"><button type="button" class="table-action stock" data-stock="${p.id}">± Stock</button><button type="button" class="table-action edit" data-edit-product="${p.id}">Modifier</button><button type="button" class="table-action danger" data-delete-product="${p.id}">Supprimer</button></div>`:'<span class="muted">Lecture seule</span>'}</td></tr>`}).join(''):'<tr><td colspan="6" class="empty-table">Aucun produit trouvé.</td></tr>';
     $$('[data-stock]').forEach(b=>b.onclick=()=>openStockDialog(Number(b.dataset.stock))); $$('[data-edit-product]').forEach(b=>b.onclick=()=>openProductDialog(Number(b.dataset.editProduct))); $$('[data-delete-product]').forEach(b=>b.onclick=()=>deleteProduct(Number(b.dataset.deleteProduct)));
   }
   function refreshProductCategorySelect(selected=null){
@@ -592,10 +610,10 @@
     if(!data.productCategories.includes(wanted)){data.productCategories.push(wanted);select.innerHTML+=`<option value="${escapeHtml(wanted)}">${escapeHtml(wanted)}</option>`;}
     select.value=wanted;
   }
-  function openProductDialog(id=null){ if(!can(2)){toast('Accès refusé');return;} const p=id?data.products.find(x=>x.id===id):null; $('#productDialogTitle').textContent=p?'Modifier le produit':'Ajouter un produit'; $('#productId').value=p?.id||''; $('#productName').value=p?.name||''; refreshProductCategorySelect(p?.category||data.productCategories[0]); $('#productPrice').value=p?.price??''; $('#productStock').value=p?.stock??0; $('#productIcon').value=p?.icon||'🍽️'; openDialog('productDialog'); setTimeout(()=>$('#productName').focus(),50); }
+  function openProductDialog(id=null){ if(!hasPermission('manageStock')){toast('Accès refusé');return;} const p=id?data.products.find(x=>x.id===id):null; $('#productDialogTitle').textContent=p?'Modifier le produit':'Ajouter un produit'; $('#productId').value=p?.id||''; $('#productName').value=p?.name||''; refreshProductCategorySelect(p?.category||data.productCategories[0]); $('#productPrice').value=p?.price??''; $('#productStock').value=p?.stock??0; $('#productIcon').value=p?.icon||'🍽️'; openDialog('productDialog'); setTimeout(()=>$('#productName').focus(),50); }
   function saveProduct(e){ e.preventDefault(); const id=Number($('#productId').value)||null; const product={name:$('#productName').value.trim(),category:$('#productCategory').value,price:Number($('#productPrice').value),stock:Math.max(0,Math.floor(Number($('#productStock').value))),icon:$('#productIcon').value.trim()||'🍽️'}; if(!product.name||!Number.isFinite(product.price)||product.price<0){toast('Vérifie les informations');return;} if(id){Object.assign(data.products.find(p=>p.id===id),product);log('Produit',`${product.name} modifié`);}else{product.id=Date.now();data.products.push(product);log('Produit',`${product.name} ajouté`);}save();closeDialog('productDialog');renderAll();toast(id?'Produit modifié':'Produit ajouté'); }
-  function deleteProduct(id){ const p=data.products.find(x=>x.id===id); if(!p)return; confirmAction('Supprimer ce produit ?',`${p.name} sera retiré du catalogue.`,()=>{data.products=data.products.filter(x=>x.id!==id);state.cart=state.cart.filter(x=>x.id!==id);save();log('Produit',`${p.name} supprimé`);renderAll();toast('Produit supprimé');}); }
-  function openStockDialog(id){ const p=data.products.find(x=>x.id===id); if(!p)return; state.stockTarget=id;state.stockMode='add';$('#stockProductSummary').innerHTML=`<span class="emoji">${p.icon||'📦'}</span><span><b>${escapeHtml(p.name)}</b><small>Stock actuel : ${p.stock}</small></span>`;$('#stockQuantity').value='1';$$('[data-stock-mode]').forEach(b=>b.classList.toggle('active',b.dataset.stockMode==='add'));openDialog('stockDialog'); }
+  function deleteProduct(id){ if(!hasPermission('manageStock')){toast('Accès refusé');return;} const p=data.products.find(x=>x.id===id); if(!p)return; confirmAction('Supprimer ce produit ?',`${p.name} sera retiré du catalogue.`,()=>{data.products=data.products.filter(x=>x.id!==id);state.cart=state.cart.filter(x=>x.id!==id);save();log('Produit',`${p.name} supprimé`);renderAll();toast('Produit supprimé');}); }
+  function openStockDialog(id){ if(!hasPermission('manageStock')){toast('Accès refusé');return;} const p=data.products.find(x=>x.id===id); if(!p)return; state.stockTarget=id;state.stockMode='add';$('#stockProductSummary').innerHTML=`<span class="emoji">${p.icon||'📦'}</span><span><b>${escapeHtml(p.name)}</b><small>Stock actuel : ${p.stock}</small></span>`;$('#stockQuantity').value='1';$$('[data-stock-mode]').forEach(b=>b.classList.toggle('active',b.dataset.stockMode==='add'));openDialog('stockDialog'); }
   function saveStock(e){ e.preventDefault(); const p=data.products.find(x=>x.id===state.stockTarget); if(!p)return; const before=p.stock,q=Math.max(0,Math.floor(Number($('#stockQuantity').value)||0)); if(state.stockMode==='add')p.stock+=q;else if(state.stockMode==='remove')p.stock=Math.max(0,p.stock-q);else p.stock=q;save();log('Stock',`${p.name} : ${before} → ${p.stock}`);closeDialog('stockDialog');renderAll();toast('Stock mis à jour'); }
 
 
@@ -629,7 +647,7 @@
   }
 
   function moveMaterial(id,delta){
-    if(!can(2)){toast('Accès refusé');return;} const index=data.materials.findIndex(m=>m.id===id); const target=index+delta;
+    if(!hasPermission('manageSupplies')){toast('Accès refusé');return;} const index=data.materials.findIndex(m=>m.id===id); const target=index+delta;
     if(index<0||target<0||target>=data.materials.length)return;
     [data.materials[index],data.materials[target]]=[data.materials[target],data.materials[index]];
     save();log('Matières premières',`Ordre modifié : ${data.materials[index].name} / ${data.materials[target].name}`);renderSupplies();toast('Ordre des matières enregistré');
@@ -659,13 +677,13 @@
       <td>${escapeHtml(m.supplier||'—')}</td>
       <td>${escapeHtml(m.unit)}</td>
       <td><b>${peso(m.pricePesos)}</b></td>
-      <td class="right"><div class="table-actions">
+      <td class="right">${hasPermission('manageSupplies')?`<div class="table-actions">
         <button type="button" class="table-action order-arrow" data-material-up="${m.id}" ${realIndex===0?'disabled':''} title="Monter">↑</button>
         <button type="button" class="table-action order-arrow" data-material-down="${m.id}" ${realIndex===data.materials.length-1?'disabled':''} title="Descendre">↓</button>
         <button type="button" class="table-action stock" data-add-material-order="${m.id}">＋ Commander</button>
         <button type="button" class="table-action edit" data-edit-material="${m.id}">Modifier</button>
         <button type="button" class="table-action danger" data-delete-material="${m.id}">Supprimer</button>
-      </div></td>
+      </div>`:'<span class="muted">Lecture seule</span>'}</td>
     </tr>`}).join(''):'<tr><td colspan="5" class="empty-table">Aucune matière enregistrée.</td></tr>';
 
     $$('[data-material-up]').forEach(b=>b.onclick=()=>moveMaterial(Number(b.dataset.materialUp),-1));
@@ -711,7 +729,7 @@
     $('#submitSupplyOrder').disabled=!state.supplyDraft.length||total<=0;
   }
 
-  function addMaterialToDraft(id){
+  function addMaterialToDraft(id){ if(!hasPermission('manageSupplies')){toast('Accès refusé');return;}
     const m=data.materials.find(x=>x.id===id); if(!m)return;
     const item=state.supplyDraft.find(x=>x.id===id);
     if(item)item.qty++; else state.supplyDraft.push({...m,qty:1});
@@ -724,7 +742,7 @@
     renderSupplyDraft();
   }
   function openMaterialDialog(id=null){
-    if(!can(2)){toast('Accès refusé');return;}
+    if(!hasPermission('manageSupplies')){toast('Accès refusé');return;}
     const m=id?data.materials.find(x=>x.id===id):null;
     $('#materialDialogTitle').textContent=m?'Modifier la matière':'Ajouter une matière';
     $('#materialId').value=m?.id||'';
@@ -736,7 +754,7 @@
     setTimeout(()=>$('#materialName').focus(),50);
   }
   function saveMaterial(e){
-    e.preventDefault(); if(!can(2)){toast('Accès refusé');return;}
+    e.preventDefault(); if(!hasPermission('manageSupplies')){toast('Accès refusé');return;}
     const id=Number($('#materialId').value)||null;
     const material={name:$('#materialName').value.trim(),supplier:$('#materialSupplier').value.trim(),unit:$('#materialUnit').value,pricePesos:Math.max(0,Number($('#materialPrice').value)||0)};
     if(!material.name||material.pricePesos<=0){toast('Indique un nom et un prix valide');return;}
@@ -751,7 +769,7 @@
     }
     save();closeDialog('materialDialog');renderSupplies();toast(id?'Matière modifiée':'Matière ajoutée');
   }
-  function deleteMaterial(id){
+  function deleteMaterial(id){ if(!hasPermission('manageSupplies')){toast('Accès refusé');return;}
     const m=data.materials.find(x=>x.id===id);if(!m)return;
     confirmAction('Supprimer cette matière ?',`${m.name} sera retirée du catalogue fournisseur. Les anciennes commandes resteront dans l’historique.`,()=>{
       data.materials=data.materials.filter(x=>x.id!==id);
@@ -837,15 +855,24 @@
   function movementPrefix(type){return (type==='remove'||type==='purchase')?'− ':type==='set'?'= ':'+ ';}
   function openDrawerDialog(){
     if($('#drawerCurrency'))$('#drawerCurrency').value='MXN';
-    setTimeout(updateDrawerCurrencyPreview,0); if(!can(2)){toast('Accès refusé');return;} state.drawerMode='add'; $('#drawerAmount').value='0'; $('#drawerReason').value=''; $$('[data-drawer-mode]').forEach(b=>b.classList.toggle('active',b.dataset.drawerMode==='add')); renderDrawerDialogSummary(); openDialog('drawerDialog'); }
+    setTimeout(updateDrawerCurrencyPreview,0); if(!hasPermission('adjustDrawer')){toast('Accès refusé');return;} state.drawerMode='add'; $('#drawerAmount').value='0'; $('#drawerReason').value=''; $$('[data-drawer-mode]').forEach(b=>b.classList.toggle('active',b.dataset.drawerMode==='add')); renderDrawerDialogSummary(); openDialog('drawerDialog'); }
   function renderDrawerDialogSummary(){ $('#drawerCurrentSummary').innerHTML=`<div class="cash-summary-line"><span>Solde global</span><strong>${peso(data.cashDrawerPesos)}</strong></div><div class="cash-summary-line"><span>Équivalent informatif</span><strong>${money(toDollars(data.cashDrawerPesos))}</strong></div><div class="cash-summary-line"><span>Taux appliqué</span><strong>1 $ = 23 pesos</strong></div>`; }
   function saveDrawerAdjustment(e){
-    e.preventDefault(); if(!can(2)){toast('Accès refusé');return;}
+    e.preventDefault(); if(!hasPermission('adjustDrawer')){toast('Accès refusé');return;}
     const originalAmount=Math.max(0,Number($('#drawerAmount').value)||0);
     const currency=getDrawerCurrency();
     const amount=currency==='USD'?originalAmount*EXCHANGE_RATE:originalAmount; const reason=$('#drawerReason').value.trim()||'Ajustement manuel'; const before=Number(data.cashDrawerPesos||0); let after=before;
     if(state.drawerMode==='add')after=before+amount; else if(state.drawerMode==='remove')after=Math.max(0,before-amount); else after=amount;
     const effectiveAmount=Math.abs(after-before); data.cashDrawerPesos=after; recordDrawerMovement(state.drawerMode,effectiveAmount,before,after,reason,'MXN',effectiveAmount,currency,originalAmount); save(); log('Fonds de caisse',`${peso(before)} → ${peso(after)} • ${reason}`); closeDialog('drawerDialog'); renderAll(); toast('Fonds de caisse mis à jour');
+  }
+
+  const permissionDefinitions=[
+    ['dashboard','Accueil'],['pos','Caisse'],['stock','Stocks'],['supplies','Matières'],['sales','Ventes'],['drawer','Voir le fonds de caisse'],['journal','Journal'],['settings','Réglages'],['adjustDrawer','Ajouter / retirer des fonds manuellement'],['manageStock','Modifier les produits et les stocks'],['manageSupplies','Gérer les matières et commandes'],['clearSales','Effacer les ventes'],['clearJournal','Vider le journal']
+  ];
+  function renderRolePermissions(){
+    const host=$('#rolePermissionsManager'); if(!host)return;
+    host.innerHTML=['Employé','Manager','Patron'].map(role=>`<div class="permission-role-card"><div class="permission-role-head"><b>${escapeHtml(role)}</b><small>${role==='Patron'?'Accès complet permanent':'Autorisations personnalisables'}</small></div><div class="permission-grid">${permissionDefinitions.map(([key,label])=>`<label class="permission-item"><input type="checkbox" data-role-permission="${escapeHtml(role)}" data-permission-key="${key}" ${data.rolePermissions[role][key]?'checked':''} ${role==='Patron'?'disabled':''}><span>${escapeHtml(label)}</span></label>`).join('')}</div></div>`).join('');
+    $$('[data-role-permission]').forEach(input=>input.onchange=()=>{if(!can(3))return;const role=input.dataset.rolePermission;const key=input.dataset.permissionKey;data.rolePermissions[role][key]=input.checked;save();log('Permissions',`${role} • ${key} : ${input.checked?'autorisé':'refusé'}`);renderRolePermissions();toast('Permissions mises à jour');});
   }
 
   function renderEmployees(){ $('#employeeTable').innerHTML=data.employees.map(e=>`<tr><td><div class="employee-cell"><span class="cell-icon">${escapeHtml(e.initials)}</span><b>${escapeHtml(e.name)}</b></div></td><td><span class="status ${e.role==='Patron'?'patron':e.role==='Manager'?'manager':'ok'}">${escapeHtml(e.role)}</span></td><td><span class="status ${e.inService?'ok':'out'}">${e.inService?'En service':'Hors service'}</span>${e.inService?`<small class="service-countdown-small" data-service-countdown="${e.id}">${serviceCountdown(e)}</small>`:''}</td><td>${peso(e.salaryPesos)} / ${Number(e.payrollIntervalMinutes)} min</td><td><span class="status ${e.active?'ok':'out'}">${e.active?'Actif':'Désactivé'}</span></td><td>${formatDate(e.lastLogin)}</td><td class="right"><div class="table-actions"><button type="button" class="table-action edit" data-edit-employee="${e.id}">Modifier</button>${e.id!==state.currentUser?.id?`<button type="button" class="table-action danger" data-delete-employee="${e.id}">Supprimer</button>`:''}</div></td></tr>`).join(''); $$('[data-edit-employee]').forEach(b=>b.onclick=()=>openEmployeeDialog(Number(b.dataset.editEmployee))); $$('[data-delete-employee]').forEach(b=>b.onclick=()=>deleteEmployee(Number(b.dataset.deleteEmployee))); }
@@ -855,7 +882,7 @@
 
   function renderJournal(){ const q=state.journalSearch.toLowerCase().trim();const list=data.journal.filter(j=>`${j.employee} ${j.action} ${j.detail}`.toLowerCase().includes(q));$('#journalTable').innerHTML=list.length?list.map(j=>`<tr><td>${formatDate(j.date)}</td><td>${escapeHtml(j.employee)}</td><td><b>${escapeHtml(j.action)}</b></td><td>${escapeHtml(j.detail)}</td></tr>`).join(''):'<tr><td colspan="4" class="empty-table">Aucune activité enregistrée.</td></tr>'; }
 
-  function exportData(){ const payload={version:11.9,exportedAt:nowISO(),data}; downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`rexs-diner-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);toast('Sauvegarde téléchargée'); }
+  function exportData(){ const payload={version:11.12,exportedAt:nowISO(),data}; downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`rexs-diner-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);toast('Sauvegarde téléchargée'); }
   function importData(file){ const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result);const source=parsed.data||parsed;if(!Array.isArray(source.products)||!Array.isArray(source.employees))throw new Error();confirmAction('Importer cette sauvegarde ?','Les données actuelles seront remplacées.',()=>{Object.assign(data,fresh(),source);normalizeData(data);save();log('Sauvegarde','Données importées');renderAll();renderLogin();toast('Sauvegarde importée');});}catch{toast('Fichier de sauvegarde invalide');}};reader.readAsText(file); }
   function downloadBlob(blob,name){ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500); }
 
@@ -863,7 +890,7 @@
   function closeDialog(id){ const d=$('#'+id);if(d.open&&typeof d.close==='function')d.close();else d.removeAttribute('open'); if(!$$('dialog[open]').length)$('#modalBackdrop').classList.add('hidden'); }
   function confirmAction(title,text,fn){ state.confirmAction=fn;$('#confirmTitle').textContent=title;$('#confirmText').textContent=text;openDialog('confirmDialog'); }
 
-  function renderAll(){ normalizeData(data);renderDashboard();renderPOS();renderStock();renderSupplies();renderSales();renderDrawer();renderEmployees();renderJournal();renderCategoryManager();renderDiscountManager();renderMyService();$('#lowStockThreshold').value=data.lowStockThreshold;$('#taxRate').value=data.taxRate; }
+  function renderAll(){ normalizeData(data);renderDashboard();renderPOS();renderStock();renderSupplies();renderSales();renderDrawer();renderEmployees();renderJournal();renderRolePermissions();renderCategoryManager();renderDiscountManager();renderMyService();$('#lowStockThreshold').value=data.lowStockThreshold;$('#taxRate').value=data.taxRate; }
 
   // Login bindings
   $$('#pinPad [data-pin]').forEach(b=>b.addEventListener('click',()=>pressPin(b.dataset.pin)));
@@ -879,7 +906,7 @@
   $('#productSearch').oninput=e=>{state.productSearch=e.target.value;renderProducts();};$('#clearCart').onclick=()=>{if(!state.cart.length)return;confirmAction('Vider le ticket ?','Tous les articles de la commande en cours seront retirés.',()=>{state.cart=[];renderCart();log('Ticket','Ticket en cours vidé');});};$('#discountSelect').onchange=e=>{state.discount=Number(e.target.value);renderCart();};$('#orderNote').oninput=e=>state.orderNote=e.target.value;$('#holdSale').onclick=holdSale;$$('[data-currency]').forEach(b=>b.onclick=()=>{state.paymentCurrency=b.dataset.currency;$$('[data-currency]').forEach(x=>x.classList.toggle('active',x===b));renderCart();});$$('.payment').forEach(b=>b.onclick=()=>openOrderConfirmation(b.dataset.method));
 
   // Stock/products
-  $('#addProduct').onclick=()=>openProductDialog();$('#productForm').addEventListener('submit',saveProduct);$('#stockSearch').oninput=e=>{state.stockSearch=e.target.value;renderStock();};$('#stockFilter').onchange=e=>{state.stockFilter=e.target.value;renderStock();};$$('[data-stock-mode]').forEach(b=>b.onclick=()=>{state.stockMode=b.dataset.stockMode;$$('[data-stock-mode]').forEach(x=>x.classList.toggle('active',x===b));});$$('[data-quick]').forEach(b=>b.onclick=()=>$('#stockQuantity').value=b.dataset.quick);$('#stockForm').addEventListener('submit',saveStock);
+  $('#addProduct').onclick=()=>{if(requirePermission('manageStock'))openProductDialog();};$('#productForm').addEventListener('submit',saveProduct);$('#stockSearch').oninput=e=>{state.stockSearch=e.target.value;renderStock();};$('#stockFilter').onchange=e=>{state.stockFilter=e.target.value;renderStock();};$$('[data-stock-mode]').forEach(b=>b.onclick=()=>{state.stockMode=b.dataset.stockMode;$$('[data-stock-mode]').forEach(x=>x.classList.toggle('active',x===b));});$$('[data-quick]').forEach(b=>b.onclick=()=>$('#stockQuantity').value=b.dataset.quick);$('#stockForm').addEventListener('submit',e=>{if(!requirePermission('manageStock')){e.preventDefault();return;}saveStock(e);});
 
 
 
@@ -887,27 +914,27 @@
   if($('#drawerAmount')) $('#drawerAmount').oninput=updateDrawerCurrencyPreview;
 
   // Matières premières / commandes fournisseurs
-  $('#addMaterial').onclick=()=>openMaterialDialog();
-  $('#materialForm').addEventListener('submit',saveMaterial);
+  $('#addMaterial').onclick=()=>{if(requirePermission('manageSupplies'))openMaterialDialog();};
+  $('#materialForm').addEventListener('submit',e=>{if(!requirePermission('manageSupplies')){e.preventDefault();return;}saveMaterial(e);});
   $('#materialSearch').oninput=e=>{state.materialSearch=e.target.value;renderSupplies();};
   if($('#sortMaterialsAZ')) $('#sortMaterialsAZ').onclick=sortMaterialsAlphabetically;
   $('#openSupplyOrder').onclick=()=>{switchView('supplies');setTimeout(()=>$('#supplyDraftList').scrollIntoView({behavior:'smooth',block:'center'}),80);};
   $('#clearSupplyDraft').onclick=()=>{if(!state.supplyDraft.length)return;confirmAction('Vider la commande en préparation ?','Les matières sélectionnées seront retirées du panier fournisseur.',()=>{state.supplyDraft=[];renderSupplyDraft();toast('Commande en préparation vidée');});};
   $('#supplyOrderNote').oninput=e=>state.supplyNote=e.target.value;
-  $('#submitSupplyOrder').onclick=submitSupplyOrder;
+  $('#submitSupplyOrder').onclick=()=>{if(requirePermission('manageSupplies'))submitSupplyOrder();};
   $('#exportSupplyOrders').onclick=exportSupplyOrdersCSV;
 if($('#cashPayBtn')) $('#cashPayBtn').onclick=()=>openOrderConfirmation('Espèces');
 
   if($('#orderConfirmForm')) $('#orderConfirmForm').addEventListener('submit',confirmAndCheckout);
 
   // Sales
-  $('#salesSearch').oninput=e=>{state.salesSearch=e.target.value;renderSales();};$('#exportSales').onclick=exportSalesCSV;$('#clearSales').onclick=()=>confirmAction('Effacer l’historique des ventes ?','Cette action supprimera toutes les ventes enregistrées.',()=>{data.sales=[];save();log('Ventes','Historique des ventes effacé');renderAll();toast('Historique effacé');});
+  $('#salesSearch').oninput=e=>{state.salesSearch=e.target.value;renderSales();};$('#exportSales').onclick=exportSalesCSV;$('#clearSales').onclick=()=>{if(!requirePermission('clearSales'))return;confirmAction('Effacer l’historique des ventes ?','Cette action supprimera toutes les ventes enregistrées.',()=>{data.sales=[];save();log('Ventes','Historique des ventes effacé');renderAll();toast('Historique effacé');});};
 
   // Cash drawer
-  $('#adjustDrawer').onclick=()=>openDrawerDialog(); $('#drawerForm').addEventListener('submit',saveDrawerAdjustment); $$('[data-drawer-mode]').forEach(b=>b.onclick=()=>{state.drawerMode=b.dataset.drawerMode;$$('[data-drawer-mode]').forEach(x=>x.classList.toggle('active',x===b));});
+  $('#adjustDrawer').onclick=()=>{if(requirePermission('adjustDrawer'))openDrawerDialog();}; $('#drawerForm').addEventListener('submit',e=>{if(!requirePermission('adjustDrawer')){e.preventDefault();return;}saveDrawerAdjustment(e);}); $$('[data-drawer-mode]').forEach(b=>b.onclick=()=>{state.drawerMode=b.dataset.drawerMode;$$('[data-drawer-mode]').forEach(x=>x.classList.toggle('active',x===b));});
 
   // Employees/journal
-  $('#addEmployee').onclick=()=>openEmployeeDialog();$('#employeeForm').addEventListener('submit',saveEmployee);setInterval(refreshServiceCountdowns,1000);$('#journalSearch').oninput=e=>{state.journalSearch=e.target.value;renderJournal();};$('#clearJournal').onclick=()=>confirmAction('Vider le journal ?','Toutes les traces d’activité seront supprimées.',()=>{data.journal=[];save();renderJournal();toast('Journal vidé');});
+  $('#addEmployee').onclick=()=>openEmployeeDialog();$('#employeeForm').addEventListener('submit',saveEmployee);setInterval(refreshServiceCountdowns,1000);$('#journalSearch').oninput=e=>{state.journalSearch=e.target.value;renderJournal();};$('#clearJournal').onclick=()=>{if(!requirePermission('clearJournal'))return;confirmAction('Vider le journal ?','Toutes les traces d’activité seront supprimées.',()=>{data.journal=[];save();renderJournal();toast('Journal vidé');});};
 
   // Settings/data
   if($('#addDiscount')) $('#addDiscount').onclick=addDiscount;
