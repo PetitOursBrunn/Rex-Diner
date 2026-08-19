@@ -1,4 +1,4 @@
-# Rex's Diner — V11.10.0
+# Rex's Diner — V11.11.0
 
 Cette version corrige le problème où certains utilisateurs voyaient encore une ancienne version après un nouveau déploiement.
 
@@ -11,7 +11,7 @@ Cette version corrige le problème où certains utilisateurs voyaient encore une
 
 ## Vérification
 Dans Réglages > Synchronisation, la version doit afficher :
-`11.10.0`
+`11.11.0`
 
 Si ton collègue voit une ancienne version, après déploiement de cette V11.8 :
 1. il ouvre le lien normalement ;
@@ -35,3 +35,12 @@ Tout le reste reste identique à la V11.6.
 - Le panier conserve une zone de défilement adaptée à la hauteur de l’écran.
 - Le catalogue et ses catégories s’adaptent à la largeur disponible.
 - L’affichage horizontal existant reste inchangé.
+
+
+## Nouveautés V11.11.0 — services et salaires
+- Chaque utilisateur peut prendre et terminer son propre service depuis le tableau de bord.
+- Un minuteur individuel démarre à la prise de service.
+- Le patron peut régler, pour chaque employé, le salaire en pesos et la durée du cycle en minutes.
+- À chaque fin de cycle, le salaire est automatiquement déduit du fond de caisse.
+- Tant que l’employé reste en service, le minuteur redémarre automatiquement pour le cycle suivant.
+- Les prélèvements sont effectués côté serveur et inscrits dans les mouvements de caisse et le journal.

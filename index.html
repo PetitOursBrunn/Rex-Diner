@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#12100f" />
   <title>Rex's Diner — Caisse & Gestion</title>
-  <link rel="stylesheet" href="styles.css?v=11.9.1" />
+  <link rel="stylesheet" href="styles.css?v=11.11.0" />
   <meta name="rexs-build" content="11.9.1" />
 </head>
 <body>
@@ -117,6 +117,8 @@
           </div>
 
           <div class="metrics" id="dashboardMetrics"></div>
+
+          <article class="panel my-service-panel" id="myServicePanel"></article>
 
           <div class="dashboard-grid">
             <article class="panel">
@@ -319,7 +321,7 @@
             <button type="button" id="addEmployee" class="button button-primary">＋ Ajouter un employé</button>
           </div>
           <div class="role-strip"><div><b>Employé</b><span>Caisse</span></div><div><b>Manager</b><span>Caisse, stocks, ventes, journal</span></div><div><b>Patron</b><span>Accès complet</span></div></div>
-          <div class="panel table-panel"><div class="table-wrap"><table><thead><tr><th>Employé</th><th>Rôle</th><th>PIN</th><th>Statut</th><th>Dernière connexion</th><th class="right">Actions</th></tr></thead><tbody id="employeeTable"></tbody></table></div></div>
+          <div class="panel table-panel"><div class="table-wrap"><table><thead><tr><th>Employé</th><th>Rôle</th><th>Service</th><th>Salaire</th><th>Compte</th><th>Dernière connexion</th><th class="right">Actions</th></tr></thead><tbody id="employeeTable"></tbody></table></div></div>
         </section>
 
         <section id="view-journal" class="view">
@@ -396,6 +398,8 @@
         <label>Initiales<input id="employeeInitials" required maxlength="3" /></label>
         <label>Rôle<select id="employeeRole"><option>Employé</option><option>Manager</option><option>Patron</option></select></label>
         <label>Code PIN (4 chiffres)<input id="employeePin" inputmode="numeric" maxlength="4" pattern="\d{4}" required /></label>
+        <label>Salaire par cycle (pesos)<input id="employeeSalary" type="number" min="0" step="1" value="0" required /></label>
+        <label>Durée du minuteur (minutes)<input id="employeePayrollInterval" type="number" min="1" step="1" value="60" required /></label>
         <label class="switch-line"><input id="employeeActive" type="checkbox" checked /><span>Compte actif</span></label>
       </div>
       <footer><button type="button" class="button button-soft" data-close-dialog="employeeDialog">Annuler</button><button type="submit" class="button button-primary">Enregistrer</button></footer>
@@ -493,6 +497,6 @@
     <footer><button type="button" class="button button-soft" data-close-dialog="confirmDialog">Annuler</button><button type="button" id="confirmButton" class="button button-danger">Confirmer</button></footer>
   </dialog>
 
-  <script src="app.js?v=11.9.1"></script>
+  <script src="app.js?v=11.11.0"></script>
 </body>
 </html>

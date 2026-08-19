@@ -29,9 +29,9 @@
       {id:12,name:'Crêpes au sucre',category:'Desserts',price:7.90,stock:10,icon:'✨'}
     ],
     employees: [
-      {id:1,name:'Jackson Teller',initials:'JT',role:'Patron',pin:'2580',active:true,lastLogin:null},
-      {id:2,name:'Sarah Miller',initials:'SM',role:'Manager',pin:'1470',active:true,lastLogin:null},
-      {id:3,name:'Mike Brown',initials:'MB',role:'Employé',pin:'1234',active:true,lastLogin:null}
+      {id:1,name:'Jackson Teller',initials:'JT',role:'Patron',pin:'2580',active:true,lastLogin:null,salaryPesos:0,payrollIntervalMinutes:60,inService:false,serviceStartedAt:null,nextPayrollAt:null},
+      {id:2,name:'Sarah Miller',initials:'SM',role:'Manager',pin:'1470',active:true,lastLogin:null,salaryPesos:0,payrollIntervalMinutes:60,inService:false,serviceStartedAt:null,nextPayrollAt:null},
+      {id:3,name:'Mike Brown',initials:'MB',role:'Employé',pin:'1234',active:true,lastLogin:null,salaryPesos:0,payrollIntervalMinutes:60,inService:false,serviceStartedAt:null,nextPayrollAt:null}
     ],
     sales: [], journal: [], heldSales: [], drawerMovements: [],
     materials: [
@@ -46,7 +46,7 @@
     discounts: [
       {id:1,name:'5 %',percent:5},{id:2,name:'10 %',percent:10},{id:3,name:'15 %',percent:15},{id:4,name:'20 %',percent:20}
     ],
-    supplyOrders: [], cashDrawerPesos:0, exchangeRate:EXCHANGE_RATE, lowStockThreshold:5, taxRate:10
+    supplyOrders: [], payrollTransactions:[], payrollAppliedTotalPesos:0, cashDrawerPesos:0, exchangeRate:EXCHANGE_RATE, lowStockThreshold:5, taxRate:10
   };
 
   const KEY='rexs_diner_pos_v10_cache';
@@ -61,6 +61,16 @@
     target.productCategories=[...new Set([...baseCategories,...usedCategories])];
     if(!target.productCategories.length)target.productCategories=['Autres'];
     if(!Array.isArray(target.discounts)) target.discounts=fresh().discounts;
+    if(!Array.isArray(target.employees)) target.employees=[];
+    target.employees.forEach(e=>{
+      e.salaryPesos=Math.max(0,Number(e.salaryPesos)||0);
+      e.payrollIntervalMinutes=Math.max(1,Number(e.payrollIntervalMinutes)||60);
+      e.inService=!!e.inService;
+      e.serviceStartedAt=e.serviceStartedAt||null;
+      e.nextPayrollAt=e.nextPayrollAt||null;
+    });
+    target.payrollAppliedTotalPesos=Math.max(0,Number(target.payrollAppliedTotalPesos)||0);
+    if(!Array.isArray(target.payrollTransactions))target.payrollTransactions=[];
     target.discounts=target.discounts.map((d,i)=>({id:d?.id ?? (Date.now()+i),name:String(d?.name||((Number(d?.percent)||0)+' %')).trim(),percent:Math.min(100,Math.max(0,Number(d?.percent)||0))})).filter(d=>d.name&&d.percent>0);
     return target;
   }
@@ -320,7 +330,7 @@
   }
 
 
-  const CLIENT_BUILD='11.10.0';
+  const CLIENT_BUILD='11.11.0';
   let buildCheckTimer=null;
 
   async function checkForNewBuild(force=false){
@@ -355,6 +365,30 @@
   function log(action,detail,user=state.currentUser){ data.journal.unshift({id:Date.now()+Math.random(),date:nowISO(),employee:user?.name||'Système',action,detail}); data.journal=data.journal.slice(0,500); save(); renderJournal(); }
   function statusFor(stock){ return stock<=0?{label:'Rupture',cls:'out'}:stock<=Number(data.lowStockThreshold)?{label:'Stock faible',cls:'low'}:{label:'Disponible',cls:'ok'}; }
   function formatDate(iso){ return iso?new Date(iso).toLocaleString('fr-BE',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'Jamais'; }
+
+
+  function formatCountdown(ms){
+    ms=Math.max(0,Number(ms)||0); const total=Math.ceil(ms/1000); const h=Math.floor(total/3600); const m=Math.floor((total%3600)/60); const sec=total%60;
+    return h?`${h}h ${String(m).padStart(2,'0')}m ${String(sec).padStart(2,'0')}s`:`${String(m).padStart(2,'0')}m ${String(sec).padStart(2,'0')}s`;
+  }
+  function serviceCountdown(emp){ return emp?.inService&&emp.nextPayrollAt?formatCountdown(new Date(emp.nextPayrollAt).getTime()-Date.now()):'—'; }
+  function renderMyService(){
+    const host=$('#myServicePanel'); if(!host||!state.currentUser)return;
+    const emp=data.employees.find(e=>e.id===state.currentUser.id); if(!emp)return;
+    const active=!!emp.inService;
+    host.innerHTML=`<div><span class="kicker">SERVICE & SALAIRE</span><h3>${active?'Service en cours':'Hors service'}</h3><p>${active?`Prochain salaire dans <strong data-service-countdown="${emp.id}">${serviceCountdown(emp)}</strong>.`:`Prends ton service pour démarrer ton minuteur de salaire.`}</p><small>Salaire : <b>${peso(emp.salaryPesos)}</b> toutes les <b>${Number(emp.payrollIntervalMinutes)} minute(s)</b>.</small></div><button type="button" id="toggleMyService" class="button ${active?'button-danger':'button-primary'}">${active?'Terminer mon service':'Prendre mon service'}</button>`;
+    $('#toggleMyService').onclick=toggleMyService;
+  }
+  function toggleMyService(){
+    const emp=data.employees.find(e=>e.id===state.currentUser?.id); if(!emp)return;
+    const now=Date.now();
+    if(emp.inService){ emp.inService=false; emp.serviceStartedAt=null; emp.nextPayrollAt=null; log('Service',`${emp.name} termine son service`,emp); toast('Service terminé'); }
+    else { emp.inService=true; emp.serviceStartedAt=new Date(now).toISOString(); emp.nextPayrollAt=new Date(now+Math.max(1,Number(emp.payrollIntervalMinutes)||60)*60000).toISOString(); log('Service',`${emp.name} prend son service`,emp); toast('Service commencé'); }
+    save(); renderMyService(); renderEmployees();
+  }
+  function refreshServiceCountdowns(){
+    $$('[data-service-countdown]').forEach(el=>{const emp=data.employees.find(e=>e.id===Number(el.dataset.serviceCountdown)); if(emp)el.textContent=serviceCountdown(emp);});
+  }
 
   function activeEmployees(){ return data.employees.filter(e=>e.active); }
   function renderLogin(){
@@ -416,6 +450,7 @@
     const alerts=data.products.filter(p=>p.stock<=Number(data.lowStockThreshold)).sort((a,b)=>a.stock-b.stock).slice(0,5);
     $('#stockAlerts').innerHTML=alerts.length?alerts.map(p=>`<div class="compact-row"><div><b>${p.icon} ${escapeHtml(p.name)}</b><small>${escapeHtml(p.category)}</small></div><strong>${p.stock<=0?'Rupture':p.stock+' restant(s)'}</strong></div>`).join(''):'<div class="empty-mini">Tout est bon côté stock.</div>';
     renderCashOverview();
+    renderMyService();
   }
 
   function categories(){ normalizeData(data); return ['Tous',...data.productCategories]; }
@@ -813,9 +848,9 @@
     const effectiveAmount=Math.abs(after-before); data.cashDrawerPesos=after; recordDrawerMovement(state.drawerMode,effectiveAmount,before,after,reason,'MXN',effectiveAmount,currency,originalAmount); save(); log('Fonds de caisse',`${peso(before)} → ${peso(after)} • ${reason}`); closeDialog('drawerDialog'); renderAll(); toast('Fonds de caisse mis à jour');
   }
 
-  function renderEmployees(){ $('#employeeTable').innerHTML=data.employees.map(e=>`<tr><td><div class="employee-cell"><span class="cell-icon">${escapeHtml(e.initials)}</span><b>${escapeHtml(e.name)}</b></div></td><td><span class="status ${e.role==='Patron'?'patron':e.role==='Manager'?'manager':'ok'}">${escapeHtml(e.role)}</span></td><td>••••</td><td><span class="status ${e.active?'ok':'out'}">${e.active?'Actif':'Désactivé'}</span></td><td>${formatDate(e.lastLogin)}</td><td class="right"><div class="table-actions"><button type="button" class="table-action edit" data-edit-employee="${e.id}">Modifier</button>${e.id!==state.currentUser?.id?`<button type="button" class="table-action danger" data-delete-employee="${e.id}">Supprimer</button>`:''}</div></td></tr>`).join(''); $$('[data-edit-employee]').forEach(b=>b.onclick=()=>openEmployeeDialog(Number(b.dataset.editEmployee))); $$('[data-delete-employee]').forEach(b=>b.onclick=()=>deleteEmployee(Number(b.dataset.deleteEmployee))); }
-  function openEmployeeDialog(id=null){ if(!can(3)){toast('Accès refusé');return;} const e=id?data.employees.find(x=>x.id===id):null;$('#employeeDialogTitle').textContent=e?'Modifier l’employé':'Ajouter un employé';$('#employeeId').value=e?.id||'';$('#employeeName').value=e?.name||'';$('#employeeInitials').value=e?.initials||'';$('#employeeRole').value=e?.role||'Employé';$('#employeePin').value=e?.pin||'';$('#employeeActive').checked=e?.active??true;openDialog('employeeDialog'); }
-  function saveEmployee(e){ e.preventDefault(); const id=Number($('#employeeId').value)||null; const pin=$('#employeePin').value.trim();if(!/^\d{4}$/.test(pin)){toast('Le PIN doit contenir 4 chiffres');return;}const emp={name:$('#employeeName').value.trim(),initials:$('#employeeInitials').value.trim().toUpperCase(),role:$('#employeeRole').value,pin,active:$('#employeeActive').checked};if(!emp.name||!emp.initials){toast('Complète les informations');return;}if(id){const target=data.employees.find(x=>x.id===id);Object.assign(target,emp);if(state.currentUser.id===id)state.currentUser=target;log('Employé',`${emp.name} modifié (${emp.role})`);}else{emp.id=Date.now();emp.lastLogin=null;data.employees.push(emp);log('Employé',`${emp.name} ajouté (${emp.role})`);}save();closeDialog('employeeDialog');applyPermissions();renderAll();renderLogin();toast(id?'Employé modifié':'Employé ajouté'); }
+  function renderEmployees(){ $('#employeeTable').innerHTML=data.employees.map(e=>`<tr><td><div class="employee-cell"><span class="cell-icon">${escapeHtml(e.initials)}</span><b>${escapeHtml(e.name)}</b></div></td><td><span class="status ${e.role==='Patron'?'patron':e.role==='Manager'?'manager':'ok'}">${escapeHtml(e.role)}</span></td><td><span class="status ${e.inService?'ok':'out'}">${e.inService?'En service':'Hors service'}</span>${e.inService?`<small class="service-countdown-small" data-service-countdown="${e.id}">${serviceCountdown(e)}</small>`:''}</td><td>${peso(e.salaryPesos)} / ${Number(e.payrollIntervalMinutes)} min</td><td><span class="status ${e.active?'ok':'out'}">${e.active?'Actif':'Désactivé'}</span></td><td>${formatDate(e.lastLogin)}</td><td class="right"><div class="table-actions"><button type="button" class="table-action edit" data-edit-employee="${e.id}">Modifier</button>${e.id!==state.currentUser?.id?`<button type="button" class="table-action danger" data-delete-employee="${e.id}">Supprimer</button>`:''}</div></td></tr>`).join(''); $$('[data-edit-employee]').forEach(b=>b.onclick=()=>openEmployeeDialog(Number(b.dataset.editEmployee))); $$('[data-delete-employee]').forEach(b=>b.onclick=()=>deleteEmployee(Number(b.dataset.deleteEmployee))); }
+  function openEmployeeDialog(id=null){ if(!can(3)){toast('Accès refusé');return;} const e=id?data.employees.find(x=>x.id===id):null;$('#employeeDialogTitle').textContent=e?'Modifier l’employé':'Ajouter un employé';$('#employeeId').value=e?.id||'';$('#employeeName').value=e?.name||'';$('#employeeInitials').value=e?.initials||'';$('#employeeRole').value=e?.role||'Employé';$('#employeePin').value=e?.pin||'';$('#employeeSalary').value=e?.salaryPesos??0;$('#employeePayrollInterval').value=e?.payrollIntervalMinutes??60;$('#employeeActive').checked=e?.active??true;openDialog('employeeDialog'); }
+  function saveEmployee(e){ e.preventDefault(); const id=Number($('#employeeId').value)||null; const pin=$('#employeePin').value.trim();if(!/^\d{4}$/.test(pin)){toast('Le PIN doit contenir 4 chiffres');return;}const emp={name:$('#employeeName').value.trim(),initials:$('#employeeInitials').value.trim().toUpperCase(),role:$('#employeeRole').value,pin,active:$('#employeeActive').checked,salaryPesos:Math.max(0,Number($('#employeeSalary').value)||0),payrollIntervalMinutes:Math.max(1,Number($('#employeePayrollInterval').value)||60)};if(!emp.name||!emp.initials){toast('Complète les informations');return;}if(id){const target=data.employees.find(x=>x.id===id);const intervalChanged=Number(target.payrollIntervalMinutes)!==emp.payrollIntervalMinutes;Object.assign(target,emp);if(target.inService&&intervalChanged)target.nextPayrollAt=new Date(Date.now()+emp.payrollIntervalMinutes*60000).toISOString();if(state.currentUser.id===id)state.currentUser=target;log('Employé',`${emp.name} modifié (${emp.role})`);}else{emp.id=Date.now();emp.lastLogin=null;emp.inService=false;emp.serviceStartedAt=null;emp.nextPayrollAt=null;data.employees.push(emp);log('Employé',`${emp.name} ajouté (${emp.role})`);}save();closeDialog('employeeDialog');applyPermissions();renderAll();renderLogin();toast(id?'Employé modifié':'Employé ajouté'); }
   function deleteEmployee(id){const e=data.employees.find(x=>x.id===id);if(!e)return;confirmAction('Supprimer cet employé ?',`${e.name} ne pourra plus se connecter.`,()=>{data.employees=data.employees.filter(x=>x.id!==id);save();log('Employé',`${e.name} supprimé`);renderEmployees();renderLogin();toast('Employé supprimé');});}
 
   function renderJournal(){ const q=state.journalSearch.toLowerCase().trim();const list=data.journal.filter(j=>`${j.employee} ${j.action} ${j.detail}`.toLowerCase().includes(q));$('#journalTable').innerHTML=list.length?list.map(j=>`<tr><td>${formatDate(j.date)}</td><td>${escapeHtml(j.employee)}</td><td><b>${escapeHtml(j.action)}</b></td><td>${escapeHtml(j.detail)}</td></tr>`).join(''):'<tr><td colspan="4" class="empty-table">Aucune activité enregistrée.</td></tr>'; }
@@ -828,7 +863,7 @@
   function closeDialog(id){ const d=$('#'+id);if(d.open&&typeof d.close==='function')d.close();else d.removeAttribute('open'); if(!$$('dialog[open]').length)$('#modalBackdrop').classList.add('hidden'); }
   function confirmAction(title,text,fn){ state.confirmAction=fn;$('#confirmTitle').textContent=title;$('#confirmText').textContent=text;openDialog('confirmDialog'); }
 
-  function renderAll(){ normalizeData(data);renderDashboard();renderPOS();renderStock();renderSupplies();renderSales();renderDrawer();renderEmployees();renderJournal();renderCategoryManager();renderDiscountManager();$('#lowStockThreshold').value=data.lowStockThreshold;$('#taxRate').value=data.taxRate; }
+  function renderAll(){ normalizeData(data);renderDashboard();renderPOS();renderStock();renderSupplies();renderSales();renderDrawer();renderEmployees();renderJournal();renderCategoryManager();renderDiscountManager();renderMyService();$('#lowStockThreshold').value=data.lowStockThreshold;$('#taxRate').value=data.taxRate; }
 
   // Login bindings
   $$('#pinPad [data-pin]').forEach(b=>b.addEventListener('click',()=>pressPin(b.dataset.pin)));
@@ -872,7 +907,7 @@ if($('#cashPayBtn')) $('#cashPayBtn').onclick=()=>openOrderConfirmation('Espèce
   $('#adjustDrawer').onclick=()=>openDrawerDialog(); $('#drawerForm').addEventListener('submit',saveDrawerAdjustment); $$('[data-drawer-mode]').forEach(b=>b.onclick=()=>{state.drawerMode=b.dataset.drawerMode;$$('[data-drawer-mode]').forEach(x=>x.classList.toggle('active',x===b));});
 
   // Employees/journal
-  $('#addEmployee').onclick=()=>openEmployeeDialog();$('#employeeForm').addEventListener('submit',saveEmployee);$('#journalSearch').oninput=e=>{state.journalSearch=e.target.value;renderJournal();};$('#clearJournal').onclick=()=>confirmAction('Vider le journal ?','Toutes les traces d’activité seront supprimées.',()=>{data.journal=[];save();renderJournal();toast('Journal vidé');});
+  $('#addEmployee').onclick=()=>openEmployeeDialog();$('#employeeForm').addEventListener('submit',saveEmployee);setInterval(refreshServiceCountdowns,1000);$('#journalSearch').oninput=e=>{state.journalSearch=e.target.value;renderJournal();};$('#clearJournal').onclick=()=>confirmAction('Vider le journal ?','Toutes les traces d’activité seront supprimées.',()=>{data.journal=[];save();renderJournal();toast('Journal vidé');});
 
   // Settings/data
   if($('#addDiscount')) $('#addDiscount').onclick=addDiscount;

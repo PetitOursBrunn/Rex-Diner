@@ -9,7 +9,7 @@ const ROOT = __dirname;
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, '.data');
 const DATA_FILE = path.join(DATA_DIR, 'rexs-diner-data.json');
 const PORT = Number(process.env.PORT || 8080);
-const BUILD_VERSION = '11.10.0';
+const BUILD_VERSION = '11.11.0';
 const ACCESS_USER = process.env.REXS_ACCESS_USER || 'rex';
 const ACCESS_PASSWORD = process.env.REXS_ACCESS_PASSWORD || '';
 const REQUIRE_AUTH = ACCESS_PASSWORD.length > 0;
@@ -32,6 +32,78 @@ function readStored() {
   }
 }
 readStored();
+
+
+function normalizePayrollState(target) {
+  if (!target || typeof target !== 'object') return target;
+  if (!Array.isArray(target.employees)) target.employees = [];
+  if (!Array.isArray(target.drawerMovements)) target.drawerMovements = [];
+  if (!Array.isArray(target.journal)) target.journal = [];
+  if (!Array.isArray(target.payrollTransactions)) target.payrollTransactions = [];
+  target.payrollAppliedTotalPesos = Math.max(0, Number(target.payrollAppliedTotalPesos) || 0);
+  target.cashDrawerPesos = Number(target.cashDrawerPesos) || 0;
+  for (const e of target.employees) {
+    e.salaryPesos = Math.max(0, Number(e.salaryPesos) || 0);
+    e.payrollIntervalMinutes = Math.max(1, Number(e.payrollIntervalMinutes) || 60);
+    e.inService = !!e.inService;
+    e.serviceStartedAt = e.serviceStartedAt || null;
+    e.nextPayrollAt = e.nextPayrollAt || null;
+  }
+  return target;
+}
+if (state) normalizePayrollState(state);
+
+let payrollProcessing = false;
+async function processPayroll() {
+  if (payrollProcessing || !state) return false;
+  payrollProcessing = true;
+  try {
+    normalizePayrollState(state);
+    const now = Date.now();
+    const processed = new Set(state.payrollTransactions.map(t => String(t.key || '')));
+    let changed = false;
+    for (const emp of state.employees) {
+      if (!emp.inService) continue;
+      const intervalMs = Math.max(1, Number(emp.payrollIntervalMinutes) || 60) * 60000;
+      if (!emp.nextPayrollAt) {
+        emp.nextPayrollAt = new Date(now + intervalMs).toISOString();
+        changed = true;
+        continue;
+      }
+      let due = new Date(emp.nextPayrollAt).getTime();
+      if (!Number.isFinite(due)) due = now + intervalMs;
+      let safety = 0;
+      while (due <= now && safety++ < 500) {
+        const key = `${emp.id}:${due}`;
+        const salary = Math.max(0, Number(emp.salaryPesos) || 0);
+        if (!processed.has(key)) {
+          const before = Number(state.cashDrawerPesos) || 0;
+          const after = before - salary;
+          state.cashDrawerPesos = after;
+          state.payrollAppliedTotalPesos += salary;
+          state.payrollTransactions.unshift({ key, employeeId:emp.id, employee:emp.name, amountPesos:salary, date:new Date(due).toISOString() });
+          state.payrollTransactions = state.payrollTransactions.slice(0,1000);
+          state.drawerMovements.unshift({id:Date.now()+Math.random(),date:new Date().toISOString(),employee:'Système',currency:'MXN',type:'salary',amount:salary,before,after,reason:`Salaire de ${emp.name}`,originalCurrency:'MXN',originalAmount:salary});
+          state.drawerMovements = state.drawerMovements.slice(0,500);
+          state.journal.unshift({id:Date.now()+Math.random(),date:new Date().toISOString(),employee:'Système',action:'Salaire',detail:`${emp.name} • ${salary} pesos déduits du fond de caisse`});
+          state.journal = state.journal.slice(0,500);
+          processed.add(key);
+        }
+        due += intervalMs;
+        emp.nextPayrollAt = new Date(due).toISOString();
+        changed = true;
+      }
+    }
+    if (changed) {
+      revision += 1;
+      await persist();
+      broadcast('payroll');
+    }
+    return changed;
+  } finally {
+    payrollProcessing = false;
+  }
+}
 
 function timingSafeEqualText(a, b) {
   const crypto = require('crypto');
@@ -176,6 +248,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === '/api/state' && req.method === 'GET') {
+    await processPayroll();
     const since = Number(url.searchParams.get('since') || -1);
     const changed = since < revision;
     return sendJson(res, 200, {
@@ -191,7 +264,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const body = await readJson(req);
       if (!state) {
-        state = body.data;
+        state = normalizePayrollState(body.data);
         revision = 1;
         await persist();
         broadcast(body.clientId || 'bootstrap');
@@ -206,9 +279,21 @@ const server = http.createServer(async (req, res) => {
     try {
       const body = await readJson(req);
       if (!body.data || typeof body.data !== 'object') return sendJson(res, 400, { error:'Données invalides' });
-      state = body.data;
+      const incoming = normalizePayrollState(body.data);
+      if (state) {
+        normalizePayrollState(state);
+        const currentApplied = Number(state.payrollAppliedTotalPesos) || 0;
+        const incomingApplied = Number(incoming.payrollAppliedTotalPesos) || 0;
+        const missingPayroll = Math.max(0, currentApplied - incomingApplied);
+        if (missingPayroll > 0) incoming.cashDrawerPesos = (Number(incoming.cashDrawerPesos) || 0) - missingPayroll;
+        incoming.payrollAppliedTotalPesos = currentApplied;
+        const tx = new Map([...(incoming.payrollTransactions||[]), ...(state.payrollTransactions||[])].map(t=>[String(t.key||`${t.employeeId}:${t.date}`),t]));
+        incoming.payrollTransactions = [...tx.values()].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,1000);
+      }
+      state = incoming;
       revision += 1;
       await persist();
+      await processPayroll();
       broadcast(body.clientId || 'unknown');
       return sendJson(res, 200, { ok:true, revision });
     } catch (err) {
@@ -244,6 +329,8 @@ const server = http.createServer(async (req, res) => {
 
   serveStatic(req, res);
 });
+
+setInterval(() => { processPayroll().catch(err => console.error('Erreur salaire :', err.message)); }, 1000);
 
 server.listen(PORT, '0.0.0.0', () => {
   const interfaces = os.networkInterfaces();

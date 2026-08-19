@@ -499,3 +499,7 @@ html[data-theme="dark"] .category-manager-row input{background:#20252c!important
 }
 
 .discount-manager-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}.discount-manager-row{display:grid;grid-template-columns:minmax(0,1fr) 110px auto;gap:8px;align-items:center}.discount-manager-row input{width:100%;margin:0}.discount-percent-field{display:flex;align-items:center;gap:5px}.discount-percent-field span{font-weight:900;color:var(--muted)}.discount-add-button{margin-top:10px}html[data-theme="dark"] .discount-manager-row input{background:#20252c!important;color:#f4f6f8!important;border-color:#343c47!important}@media(max-width:760px){.discount-manager-row{grid-template-columns:minmax(0,1fr) 95px}.discount-manager-row .danger{grid-column:1/-1}}
+
+
+/* V11.11 — prise de service et salaires automatiques */
+.my-service-panel{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:18px;padding:18px 20px}.my-service-panel h3{margin:3px 0 4px}.my-service-panel p{margin:0 0 5px;color:var(--muted)}.my-service-panel small{color:var(--muted)}.service-countdown-small{display:block;margin-top:5px;font-weight:800;color:var(--muted);white-space:nowrap}@media(max-width:700px){.my-service-panel{align-items:stretch;flex-direction:column}.my-service-panel .button{width:100%}}
