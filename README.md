@@ -1,4 +1,4 @@
-# Rex's Diner — V11.14.0
+# Rex's Diner — V11.15.0
 
 Cette version corrige le problème où certains utilisateurs voyaient encore une ancienne version après un nouveau déploiement.
 
@@ -11,7 +11,7 @@ Cette version corrige le problème où certains utilisateurs voyaient encore une
 
 ## Vérification
 Dans Réglages > Synchronisation, la version doit afficher :
-`11.14.0`
+`11.15.0`
 
 Si ton collègue voit une ancienne version, après déploiement de cette V11.8 :
 1. il ouvre le lien normalement ;
@@ -59,7 +59,7 @@ Le patron peut configurer les accès des grades Employé et Manager aux sections
 - Les besoins sont cumulés entre produits vendus seuls et produits présents dans plusieurs menus afin d’éviter tout dépassement de stock.
 
 
-## Nouveautés V11.14.0 — quantités directes & recettes
+## Nouveautés V11.15.0 — quantités directes & recettes
 - Chaque matière du catalogue possède maintenant un champ de quantité avant le bouton Commander.
 - Les quantités du panier fournisseur sont directement modifiables et acceptent jusqu’à 3 décimales.
 - Nouvel onglet Recettes & production dans Matières premières.

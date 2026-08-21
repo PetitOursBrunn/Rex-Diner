@@ -345,7 +345,7 @@
   }
 
 
-  const CLIENT_BUILD='11.14.0';
+  const CLIENT_BUILD='11.15.0';
   let buildCheckTimer=null;
 
   async function checkForNewBuild(force=false){
@@ -503,16 +503,26 @@
     const products=data.products.filter(p=>(state.category==='Tous'||p.category===state.category)&&p.name.toLowerCase().includes(q));
     const menus=data.menus.filter(m=>(state.category==='Tous'||state.category==='Menus')&&m.name.toLowerCase().includes(q));
     const cards=[];
-    menus.forEach(m=>{const stock=menuAvailableStock(m),st=statusFor(stock),parts=m.items.map(it=>{const p=data.products.find(x=>x.id===it.productId);return p?`${it.qty}× ${p.name}`:''}).filter(Boolean).join(' • ');cards.push(`<button type="button" class="product-card menu-card ${stock<=0?'out':''}" data-add-menu="${m.id}" ${stock<=0?'disabled':''}><div class="emoji">${m.icon||'🍽️'}</div><h4>${escapeHtml(m.name)}</h4><p>Menu • ${escapeHtml(parts)}</p><div class="product-bottom"><b>${money(m.price)}</b><span class="stock-badge ${st.cls}">${stock<=0?'Rupture':stock+' menu(s)'}</span></div></button>`);});
-    products.forEach(p=>{const st=statusFor(p.stock);cards.push(`<button type="button" class="product-card ${p.stock<=0?'out':''}" data-add-product="${p.id}" ${p.stock<=0?'disabled':''}><div class="emoji">${p.icon||'🍽️'}</div><h4>${escapeHtml(p.name)}</h4><p>${escapeHtml(p.category)}</p><div class="product-bottom"><b>${money(p.price)}</b><span class="stock-badge ${st.cls}">${p.stock<=0?'Rupture':p.stock+' dispo.'}</span></div></button>`);});
+    menus.forEach(m=>{const stock=menuAvailableStock(m),st=statusFor(stock),parts=m.items.map(it=>{const p=data.products.find(x=>x.id===it.productId);return p?`${it.qty}× ${p.name}`:''}).filter(Boolean).join(' • ');cards.push(`<article class="product-card menu-card ${stock<=0?'out':''}"><div class="emoji">${m.icon||'🍽️'}</div><h4>${escapeHtml(m.name)}</h4><p>Menu • ${escapeHtml(parts)}</p><div class="product-bottom"><b>${money(m.price)}</b><span class="stock-badge ${st.cls}">${stock<=0?'Rupture':stock+' menu(s)'}</span></div>${productQtyControls(m.id,'menu',stock)}</article>`);});
+    products.forEach(p=>{const st=statusFor(p.stock);cards.push(`<article class="product-card ${p.stock<=0?'out':''}"><div class="emoji">${p.icon||'🍽️'}</div><h4>${escapeHtml(p.name)}</h4><p>${escapeHtml(p.category)}</p><div class="product-bottom"><b>${money(p.price)}</b><span class="stock-badge ${st.cls}">${p.stock<=0?'Rupture':p.stock+' dispo.'}</span></div>${productQtyControls(p.id,'product',p.stock)}</article>`);});
     $('#productGrid').innerHTML=cards.length?cards.join(''):'<div class="empty-mini">Aucun produit trouvé.</div>';
-    $$('[data-add-product]').forEach(b=>b.onclick=()=>addToCart(Number(b.dataset.addProduct),'product'));
-    $$('[data-add-menu]').forEach(b=>b.onclick=()=>addToCart(Number(b.dataset.addMenu),'menu'));
+    $$('[data-pos-qty-step]').forEach(b=>b.onclick=()=>adjustPosQty(b.dataset.posType,Number(b.dataset.posId),Number(b.dataset.posQtyStep)));
+    $$('[data-pos-add]').forEach(b=>b.onclick=()=>{const type=b.dataset.posType||'product',id=Number(b.dataset.posId),input=$(`[data-pos-qty="${type}-${id}"]`);addToCart(id,type,Math.max(1,Math.floor(Number(input?.value)||1)));});
+    $$('[data-pos-qty]').forEach(input=>{input.oninput=()=>{const max=Math.max(0,Math.floor(Number(input.max)||0)),v=Math.max(1,Math.floor(Number(input.value)||1));input.value=max?Math.min(v,max):v;};input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();const [type,id]=input.dataset.posQty.split('-');addToCart(Number(id),type,Math.max(1,Math.floor(Number(input.value)||1)));}};});
   }
-  function addToCart(id,type='product'){
+  function productQtyControls(id,type,maxStock){
+    const disabled=maxStock<=0?'disabled':'';
+    return `<div class="pos-qty-panel"><div class="pos-qty-label">Quantité à ajouter</div><div class="pos-qty-row"><input type="number" min="1" max="${Math.max(1,Math.floor(Number(maxStock)||0))}" step="1" value="1" data-pos-qty="${type}-${id}" ${disabled}><button type="button" data-pos-qty-step="1" data-pos-type="${type}" data-pos-id="${id}" ${disabled}>+1</button><button type="button" data-pos-qty-step="5" data-pos-type="${type}" data-pos-id="${id}" ${disabled}>+5</button><button type="button" data-pos-qty-step="10" data-pos-type="${type}" data-pos-id="${id}" ${disabled}>+10</button></div><button type="button" class="pos-add-button" data-pos-add data-pos-type="${type}" data-pos-id="${id}" ${disabled}>＋ Ajouter au panier</button></div>`;
+  }
+  function adjustPosQty(type,id,delta){
+    const input=$(`[data-pos-qty="${type}-${id}"]`);if(!input)return;const max=Math.max(0,Math.floor(Number(input.max)||0));let next=Math.max(1,Math.floor(Number(input.value)||1)+delta);if(max)next=Math.min(next,max);input.value=next;
+  }
+  function addToCart(id,type='product',qty=1){
     const ref=type==='menu'?data.menus.find(x=>x.id===id):data.products.find(x=>x.id===id); if(!ref)return;
-    const item=state.cart.find(x=>x.id===id&&(x.type||'product')===type); if(item)item.qty++; else state.cart.push({id:ref.id,type,name:ref.name,price:ref.price,qty:1});
-    const check=validateCartStock(); if(!check.ok){if(item)item.qty--;else state.cart=state.cart.filter(x=>!(x.id===id&&(x.type||'product')===type));toast(`Stock insuffisant : ${check.product?.name||'produit'}`);return;} renderCart();
+    qty=Math.max(1,Math.floor(Number(qty)||1));
+    const item=state.cart.find(x=>x.id===id&&(x.type||'product')===type),before=item?.qty||0;
+    if(item)item.qty+=qty; else state.cart.push({id:ref.id,type,name:ref.name,price:ref.price,qty});
+    const check=validateCartStock(); if(!check.ok){if(item)item.qty=before;else state.cart=state.cart.filter(x=>!(x.id===id&&(x.type||'product')===type));toast(`Stock insuffisant : ${check.product?.name||'produit'}`);return;} renderCart();
   }
   function changeQty(id,delta,type='product'){
     const item=state.cart.find(x=>x.id===id&&(x.type||'product')===type); if(!item)return; item.qty+=delta;
@@ -1038,7 +1048,7 @@
 
   function renderJournal(){ const q=state.journalSearch.toLowerCase().trim();const list=data.journal.filter(j=>`${j.employee} ${j.action} ${j.detail}`.toLowerCase().includes(q));$('#journalTable').innerHTML=list.length?list.map(j=>`<tr><td>${formatDate(j.date)}</td><td>${escapeHtml(j.employee)}</td><td><b>${escapeHtml(j.action)}</b></td><td>${escapeHtml(j.detail)}</td></tr>`).join(''):'<tr><td colspan="4" class="empty-table">Aucune activité enregistrée.</td></tr>'; }
 
-  function exportData(){ const payload={version:11.13,exportedAt:nowISO(),data}; downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`rexs-diner-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);toast('Sauvegarde téléchargée'); }
+  function exportData(){ const payload={version:11.15,exportedAt:nowISO(),data}; downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`rexs-diner-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);toast('Sauvegarde téléchargée'); }
   function importData(file){ const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result);const source=parsed.data||parsed;if(!Array.isArray(source.products)||!Array.isArray(source.employees))throw new Error();confirmAction('Importer cette sauvegarde ?','Les données actuelles seront remplacées.',()=>{Object.assign(data,fresh(),source);normalizeData(data);save();log('Sauvegarde','Données importées');renderAll();renderLogin();toast('Sauvegarde importée');});}catch{toast('Fichier de sauvegarde invalide');}};reader.readAsText(file); }
   function downloadBlob(blob,name){ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500); }
 
