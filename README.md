@@ -1,4 +1,4 @@
-# Rex's Diner — V11.13.0
+# Rex's Diner — V11.14.0
 
 Cette version corrige le problème où certains utilisateurs voyaient encore une ancienne version après un nouveau déploiement.
 
@@ -11,7 +11,7 @@ Cette version corrige le problème où certains utilisateurs voyaient encore une
 
 ## Vérification
 Dans Réglages > Synchronisation, la version doit afficher :
-`11.13.0`
+`11.14.0`
 
 Si ton collègue voit une ancienne version, après déploiement de cette V11.8 :
 1. il ouvre le lien normalement ;
@@ -57,3 +57,14 @@ Le patron peut configurer les accès des grades Employé et Manager aux sections
 - La caisse calcule la disponibilité d’un menu à partir du stock réel de ses composants.
 - Lors de la confirmation d’une vente, chaque élément du menu est automatiquement retiré du stock avec sa quantité.
 - Les besoins sont cumulés entre produits vendus seuls et produits présents dans plusieurs menus afin d’éviter tout dépassement de stock.
+
+
+## Nouveautés V11.14.0 — quantités directes & recettes
+- Chaque matière du catalogue possède maintenant un champ de quantité avant le bouton Commander.
+- Les quantités du panier fournisseur sont directement modifiables et acceptent jusqu’à 3 décimales.
+- Nouvel onglet Recettes & production dans Matières premières.
+- Création, modification et suppression de recettes reliées aux produits existants ou personnalisées.
+- Chaque recette mémorise les matières et quantités nécessaires pour 1 préparation.
+- En indiquant le nombre d’unités à produire, les besoins sont multipliés et ajoutés automatiquement au panier fournisseur.
+- Les besoins d’une recette se cumulent avec les matières déjà présentes dans le panier.
+- Les recettes sont intégrées aux données synchronisées et persistantes du serveur.

@@ -35,6 +35,7 @@
     ],
     sales: [], journal: [], heldSales: [], drawerMovements: [],
     menus: [],
+    recipes: [],
     materials: [
       {id:101,name:'Viande hachée',supplier:'Los Santos Food Supply',unit:'kg',pricePesos:115},
       {id:102,name:'Pains burger',supplier:'Bakery Wholesale',unit:'carton',pricePesos:460},
@@ -63,7 +64,9 @@
     if(!Array.isArray(target.products))target.products=[];
     if(!Array.isArray(target.materials))target.materials=[];
     if(!Array.isArray(target.menus))target.menus=[];
+    if(!Array.isArray(target.recipes))target.recipes=[];
     target.menus=target.menus.map((m,i)=>({id:m?.id ?? (Date.now()+i),name:String(m?.name||'Menu').trim()||'Menu',price:Math.max(0,Number(m?.price)||0),icon:String(m?.icon||'🍽️').trim()||'🍽️',items:Array.isArray(m?.items)?m.items.map(it=>({productId:Number(it?.productId),qty:Math.max(1,Math.floor(Number(it?.qty)||1))})).filter(it=>target.products.some(p=>p.id===it.productId)):[]})).filter(m=>m.items.length);
+    target.recipes=target.recipes.map((r,i)=>({id:r?.id ?? (Date.now()+10000+i),productId:Number(r?.productId)||null,name:String(r?.name||'Recette').trim()||'Recette',icon:String(r?.icon||'🍳').trim()||'🍳',ingredients:Array.isArray(r?.ingredients)?r.ingredients.map(it=>({materialId:Number(it?.materialId),qty:Math.max(0,Number(it?.qty)||0)})).filter(it=>it.qty>0&&target.materials.some(m=>m.id===it.materialId)):[]})).filter(r=>r.ingredients.length);
     const usedCategories=[...new Set(target.products.map(p=>String(p.category||'Autres').trim()||'Autres'))];
     const baseCategories=Array.isArray(target.productCategories)?target.productCategories.map(c=>String(c||'').trim()).filter(Boolean):[];
     target.productCategories=[...new Set([...baseCategories,...usedCategories])];
@@ -111,7 +114,7 @@
     sseConnected:false,pollConnected:false,pollTimer:null,reconnectTimer:null,
     lastServerContact:0,lastAppliedRevision:0
   };
-  const state={currentUser:null,loginUserId:null,pin:'',view:'dashboard',category:'Tous',productSearch:'',stockSearch:'',stockFilter:'all',salesSearch:'',journalSearch:'',materialSearch:'',supplyDraft:[],supplyNote:'',cart:[],orderNote:'',discount:0,stockTarget:null,stockMode:'add',confirmAction:null,paymentCurrency:'USD',drawerMode:'add',pendingCheckoutMethod:null,pendingCheckoutCurrency:null};
+  const state={currentUser:null,loginUserId:null,pin:'',view:'dashboard',category:'Tous',productSearch:'',stockSearch:'',stockFilter:'all',salesSearch:'',journalSearch:'',materialSearch:'',supplyTab:'order',supplyDraft:[],supplyNote:'',recipeProduction:{},cart:[],orderNote:'',discount:0,stockTarget:null,stockMode:'add',confirmAction:null,paymentCurrency:'USD',drawerMode:'add',pendingCheckoutMethod:null,pendingCheckoutCurrency:null};
   function save(){
     localStorage.setItem(KEY,JSON.stringify(data));
     if(!sync.ready || sync.suppress){ return; }
@@ -342,7 +345,7 @@
   }
 
 
-  const CLIENT_BUILD='11.13.0';
+  const CLIENT_BUILD='11.14.0';
   let buildCheckTimer=null;
 
   async function checkForNewBuild(force=false){
@@ -439,7 +442,7 @@
     $$('.patron-only').forEach(el=>el.classList.toggle('hidden',!hasPermission(el.id==='clearSales'?'clearSales':el.id==='clearJournal'?'clearJournal':'employees')));
     const adjust=$('#adjustDrawer'); if(adjust)adjust.classList.toggle('hidden',!hasPermission('adjustDrawer'));
     ['addProduct','addMenu'].forEach(id=>{const el=$('#'+id);if(el)el.classList.toggle('hidden',!hasPermission('manageStock'));});
-    ['addMaterial','sortMaterialsAZ','submitSupplyOrder'].forEach(id=>{const el=$('#'+id);if(el)el.classList.toggle('hidden',!hasPermission('manageSupplies'));});
+    ['addMaterial','sortMaterialsAZ','submitSupplyOrder','addRecipe'].forEach(id=>{const el=$('#'+id);if(el)el.classList.toggle('hidden',!hasPermission('manageSupplies'));});
   }
 
   const viewMeta={dashboard:['TABLEAU DE BORD','Accueil'],pos:['CAISSE','Caisse enregistreuse'],stock:['INVENTAIRE','Gestion des stocks'],supplies:['APPROVISIONNEMENT','Matières premières'],sales:['ACTIVITÉ','Ventes'],drawer:['TRÉSORERIE','Fonds de caisse'],employees:['ÉQUIPE','Employés & permissions'],journal:['SÉCURITÉ','Journal d’activité'],settings:['CONFIGURATION','Réglages']};
@@ -723,7 +726,21 @@
 
 
   function totalSupplySpent(){ return data.supplyOrders.reduce((s,o)=>s+Number(o.totalPesos||0),0); }
+  function normalizeSupplyQty(value){
+    const n=Number(String(value ?? '').replace(',','.'));
+    return Number.isFinite(n)?Math.max(0,Math.round(n*1000)/1000):0;
+  }
+  function formatQty(value){
+    return new Intl.NumberFormat('fr-BE',{maximumFractionDigits:3}).format(Number(value)||0);
+  }
   function supplyDraftTotal(){ return state.supplyDraft.reduce((s,i)=>s+(Number(i.qty)||0)*(Number(i.pricePesos)||0),0); }
+  function setSupplyTab(tab){
+    state.supplyTab=tab==='recipes'?'recipes':'order';
+    $$('.supply-subtab').forEach(b=>b.classList.toggle('active',b.dataset.supplyTab===state.supplyTab));
+    $('#supplyOrderTab')?.classList.toggle('hidden',state.supplyTab!=='order');
+    $('#supplyRecipesTab')?.classList.toggle('hidden',state.supplyTab!=='recipes');
+    if(state.supplyTab==='recipes')renderRecipes();
+  }
   function renderSupplies(){
     if(!$('#supplyMetrics'))return;
     $('#supplyMetrics').innerHTML=[
@@ -740,10 +757,10 @@
       <td>${escapeHtml(m.supplier||'—')}</td>
       <td>${escapeHtml(m.unit)}</td>
       <td><b>${peso(m.pricePesos)}</b></td>
-      <td class="right">${hasPermission('manageSupplies')?`<div class="table-actions">
+      <td class="right">${hasPermission('manageSupplies')?`<div class="table-actions material-actions">
         <button type="button" class="table-action order-arrow" data-material-up="${m.id}" ${realIndex===0?'disabled':''} title="Monter">↑</button>
         <button type="button" class="table-action order-arrow" data-material-down="${m.id}" ${realIndex===data.materials.length-1?'disabled':''} title="Descendre">↓</button>
-        <button type="button" class="table-action stock" data-add-material-order="${m.id}">＋ Commander</button>
+        <div class="material-order-control"><input class="material-order-qty" type="number" min="0.001" step="0.001" value="1" data-material-qty="${m.id}" aria-label="Quantité de ${escapeHtml(m.name)} à commander"><button type="button" class="table-action stock" data-add-material-order="${m.id}">＋ Commander</button></div>
         <button type="button" class="table-action edit" data-edit-material="${m.id}">Modifier</button>
         <button type="button" class="table-action danger" data-delete-material="${m.id}">Supprimer</button>
       </div>`:'<span class="muted">Lecture seule</span>'}</td>
@@ -751,16 +768,18 @@
 
     $$('[data-material-up]').forEach(b=>b.onclick=()=>moveMaterial(Number(b.dataset.materialUp),-1));
     $$('[data-material-down]').forEach(b=>b.onclick=()=>moveMaterial(Number(b.dataset.materialDown),1));
-    $$('[data-add-material-order]').forEach(b=>b.onclick=()=>addMaterialToDraft(Number(b.dataset.addMaterialOrder)));
+    $$('[data-add-material-order]').forEach(b=>b.onclick=()=>{const id=Number(b.dataset.addMaterialOrder);const input=$(`[data-material-qty="${id}"]`);addMaterialToDraft(id,normalizeSupplyQty(input?.value||1));});
     $$('[data-edit-material]').forEach(b=>b.onclick=()=>openMaterialDialog(Number(b.dataset.editMaterial)));
     $$('[data-delete-material]').forEach(b=>b.onclick=()=>deleteMaterial(Number(b.dataset.deleteMaterial)));
 
     renderSupplyDraft();
+    renderRecipes();
+    setSupplyTab(state.supplyTab);
     $('#supplyOrdersTable').innerHTML=data.supplyOrders.length?data.supplyOrders.map(o=>`<tr>
       <td>${formatDate(o.date)}</td>
       <td><b>${escapeHtml(o.id)}</b></td>
       <td>${escapeHtml(o.employee)}</td>
-      <td>${o.items.reduce((s,i)=>s+Number(i.qty||0),0)}</td>
+      <td>${formatQty(o.items.reduce((s,i)=>s+Number(i.qty||0),0))}</td>
       <td><b>${peso(o.totalPesos)}</b></td>
       <td>${peso(o.balanceAfter)}</td>
       <td>${escapeHtml(o.note||'—')}</td>
@@ -774,16 +793,17 @@
         <b>${escapeHtml(i.name)}</b>
         <small>${escapeHtml(i.supplier||'Sans fournisseur')} • ${peso(i.pricePesos)} / ${escapeHtml(i.unit)}</small>
       </div>
-      <div class="supply-qty">
+      <div class="supply-qty editable">
         <button type="button" data-supply-id="${i.id}" data-supply-delta="-1">−</button>
-        <b>${i.qty}</b>
+        <input type="number" min="0.001" step="0.001" value="${Number(i.qty)||0}" data-supply-input="${i.id}" aria-label="Quantité de ${escapeHtml(i.name)}">
         <button type="button" data-supply-id="${i.id}" data-supply-delta="1">+</button>
       </div>
       <strong>${peso(i.qty*i.pricePesos)}</strong>
       <button type="button" class="supply-remove" data-remove-supply="${i.id}" aria-label="Retirer">×</button>
-    </div>`).join(''):'<div class="empty-cart supply-empty"><div><span class="big">🛒</span><b>Aucune matière</b><br>Ajoute des matières depuis le catalogue.</div></div>';
+    </div>`).join(''):'<div class="empty-cart supply-empty"><div><span class="big">🛒</span><b>Aucune matière</b><br>Ajoute des matières depuis le catalogue ou depuis une recette.</div></div>';
 
     $$('[data-supply-id]').forEach(b=>b.onclick=()=>changeSupplyQty(Number(b.dataset.supplyId),Number(b.dataset.supplyDelta)));
+    $$('[data-supply-input]').forEach(input=>{input.onchange=()=>setSupplyQty(Number(input.dataset.supplyInput),input.value);input.onblur=()=>setSupplyQty(Number(input.dataset.supplyInput),input.value);});
     $$('[data-remove-supply]').forEach(b=>b.onclick=()=>{state.supplyDraft=state.supplyDraft.filter(i=>i.id!==Number(b.dataset.removeSupply));renderSupplyDraft();});
     const total=supplyDraftTotal();
     $('#supplyDraftTotal').textContent=peso(total);
@@ -792,17 +812,87 @@
     $('#submitSupplyOrder').disabled=!state.supplyDraft.length||total<=0;
   }
 
-  function addMaterialToDraft(id){ if(!hasPermission('manageSupplies')){toast('Accès refusé');return;}
-    const m=data.materials.find(x=>x.id===id); if(!m)return;
+  function addMaterialToDraft(id,qty=1,{silent=false}={}){ if(!hasPermission('manageSupplies')){toast('Accès refusé');return false;}
+    const m=data.materials.find(x=>x.id===id); if(!m)return false;
+    qty=normalizeSupplyQty(qty); if(qty<=0){if(!silent)toast('Indique une quantité supérieure à 0');return false;}
     const item=state.supplyDraft.find(x=>x.id===id);
-    if(item)item.qty++; else state.supplyDraft.push({...m,qty:1});
-    renderSupplyDraft(); toast(`${m.name} ajouté à la commande`);
+    if(item)item.qty=normalizeSupplyQty(Number(item.qty||0)+qty); else state.supplyDraft.push({...m,qty});
+    if(!silent){renderSupplyDraft();toast(`${formatQty(qty)} ${m.unit} de ${m.name} ajouté(s)`);} return true;
+  }
+  function setSupplyQty(id,value){
+    const item=state.supplyDraft.find(x=>x.id===id);if(!item)return;
+    const qty=normalizeSupplyQty(value);
+    if(qty<=0)state.supplyDraft=state.supplyDraft.filter(x=>x.id!==id);else item.qty=qty;
+    renderSupplyDraft();
   }
   function changeSupplyQty(id,delta){
     const item=state.supplyDraft.find(x=>x.id===id);if(!item)return;
-    item.qty=Math.max(0,item.qty+delta);
+    item.qty=normalizeSupplyQty(Math.max(0,Number(item.qty||0)+delta));
     if(item.qty===0)state.supplyDraft=state.supplyDraft.filter(x=>x.id!==id);
     renderSupplyDraft();
+  }
+
+  function recipeName(recipe){
+    const p=data.products.find(x=>x.id===Number(recipe.productId));
+    return p?.name||recipe.name||'Recette';
+  }
+  function renderRecipes(){
+    const host=$('#recipeCards'); if(!host)return;
+    if(!data.recipes.length){host.innerHTML='<div class="recipe-empty"><span>🍳</span><b>Aucune recette enregistrée</b><small>Crée une recette pour calculer automatiquement les matières à commander.</small></div>';return;}
+    host.innerHTML=data.recipes.map(r=>{
+      const ingredients=r.ingredients.map(it=>{const m=data.materials.find(x=>x.id===it.materialId);return m?`${formatQty(it.qty)} ${escapeHtml(m.unit)} ${escapeHtml(m.name)}`:''}).filter(Boolean).join(' • ');
+      const production=Math.max(1,Math.floor(Number(state.recipeProduction[r.id])||1));
+      return `<article class="recipe-card"><div class="recipe-card-main"><div class="recipe-icon">${escapeHtml(r.icon||'🍳')}</div><div><h4>${escapeHtml(recipeName(r))}</h4><p>${ingredients}</p></div></div><div class="recipe-production"><label>À produire<input type="number" min="1" step="1" value="${production}" data-recipe-production="${r.id}"></label><button type="button" class="button button-primary compact" data-add-recipe="${r.id}">Ajouter les matières</button></div>${hasPermission('manageSupplies')?`<div class="recipe-card-actions"><button type="button" class="table-action edit" data-edit-recipe="${r.id}">Modifier</button><button type="button" class="table-action danger" data-delete-recipe="${r.id}">Supprimer</button></div>`:''}</article>`;
+    }).join('');
+    $$('[data-recipe-production]').forEach(input=>input.oninput=()=>state.recipeProduction[Number(input.dataset.recipeProduction)]=Math.max(1,Math.floor(Number(input.value)||1)));
+    $$('[data-add-recipe]').forEach(b=>b.onclick=()=>addRecipeRequirementsToDraft(Number(b.dataset.addRecipe)));
+    $$('[data-edit-recipe]').forEach(b=>b.onclick=()=>openRecipeDialog(Number(b.dataset.editRecipe)));
+    $$('[data-delete-recipe]').forEach(b=>b.onclick=()=>deleteRecipe(Number(b.dataset.deleteRecipe)));
+  }
+  function addRecipeRequirementsToDraft(id){
+    if(!hasPermission('manageSupplies')){toast('Accès refusé');return;}
+    const r=data.recipes.find(x=>x.id===id);if(!r)return;
+    const count=Math.max(1,Math.floor(Number(state.recipeProduction[id])||1));
+    for(const it of r.ingredients)addMaterialToDraft(it.materialId,Number(it.qty)*count,{silent:true});
+    renderSupplyDraft();setSupplyTab('order');toast(`Besoins pour ${count} × ${recipeName(r)} ajoutés`);
+  }
+  function recipeItemsEditor(items=[]){
+    const host=$('#recipeIngredientsEditor');if(!host)return;
+    const safe=items.length?items:[{materialId:data.materials[0]?.id||'',qty:1}];
+    host.innerHTML=safe.map((it,index)=>`<div class="recipe-ingredient-row" data-recipe-row><select data-recipe-material>${data.materials.map(m=>`<option value="${m.id}" ${Number(it.materialId)===m.id?'selected':''}>${escapeHtml(m.name)} (${escapeHtml(m.unit)})</option>`).join('')}</select><input data-recipe-qty type="number" min="0.001" step="0.001" value="${Number(it.qty)||1}" title="Quantité pour 1 préparation"><button type="button" class="table-action danger" data-remove-recipe-row="${index}">×</button></div>`).join('');
+    $$('[data-remove-recipe-row]',host).forEach(b=>b.onclick=()=>{const current=collectRecipeItems();current.splice(Number(b.dataset.removeRecipeRow),1);recipeItemsEditor(current);});
+  }
+  function collectRecipeItems(){
+    const merged=new Map();
+    $$('#recipeIngredientsEditor [data-recipe-row]').forEach(row=>{const materialId=Number($('[data-recipe-material]',row)?.value),qty=normalizeSupplyQty($('[data-recipe-qty]',row)?.value);if(materialId&&qty>0)merged.set(materialId,(merged.get(materialId)||0)+qty);});
+    return [...merged.entries()].map(([materialId,qty])=>({materialId,qty:normalizeSupplyQty(qty)}));
+  }
+  function openRecipeDialog(id=null){
+    if(!hasPermission('manageSupplies')){toast('Accès refusé');return;}
+    if(!data.materials.length){toast('Ajoute au moins une matière première avant de créer une recette');return;}
+    const r=id?data.recipes.find(x=>x.id===id):null;
+    $('#recipeDialogTitle').textContent=r?'Modifier la recette':'Créer une recette';
+    $('#recipeId').value=r?.id||'';
+    $('#recipeProduct').innerHTML='<option value="">— Recette personnalisée —</option>'+data.products.map(p=>`<option value="${p.id}" ${Number(r?.productId)===p.id?'selected':''}>${escapeHtml(p.name)}</option>`).join('');
+    $('#recipeName').value=r?.name||'';
+    $('#recipeIcon').value=r?.icon||'🍳';
+    recipeItemsEditor(r?.ingredients||[]);
+    openDialog('recipeDialog');
+  }
+  function saveRecipe(e){
+    e.preventDefault();if(!hasPermission('manageSupplies')){toast('Accès refusé');return;}
+    const id=Number($('#recipeId').value)||null,productId=Number($('#recipeProduct').value)||null;
+    const product=data.products.find(x=>x.id===productId),name=($('#recipeName').value.trim()||product?.name||'').trim(),icon=$('#recipeIcon').value.trim()||product?.icon||'🍳',ingredients=collectRecipeItems();
+    if(!name){toast('Indique un nom de recette ou sélectionne un produit');return;}
+    if(!ingredients.length){toast('Ajoute au moins une matière avec une quantité valide');return;}
+    const duplicate=data.recipes.find(r=>r.id!==id&&productId&&Number(r.productId)===productId);if(duplicate){toast('Une recette existe déjà pour ce produit');return;}
+    const recipe={id:id||Date.now(),productId,name,icon,ingredients};
+    if(id){const target=data.recipes.find(x=>x.id===id);if(!target)return;Object.assign(target,recipe);}else data.recipes.push(recipe);
+    save();log('Recette',`${name} ${id?'modifiée':'créée'} • ${ingredients.length} matière(s)`);closeDialog('recipeDialog');renderRecipes();toast(id?'Recette modifiée':'Recette créée');
+  }
+  function deleteRecipe(id){
+    if(!hasPermission('manageSupplies')){toast('Accès refusé');return;}const r=data.recipes.find(x=>x.id===id);if(!r)return;
+    confirmAction('Supprimer cette recette ?',`${recipeName(r)} sera retirée du calcul automatique des matières.`,()=>{data.recipes=data.recipes.filter(x=>x.id!==id);delete state.recipeProduction[id];save();log('Recette',`${recipeName(r)} supprimée`);renderRecipes();toast('Recette supprimée');});
   }
   function openMaterialDialog(id=null){
     if(!hasPermission('manageSupplies')){toast('Accès refusé');return;}
@@ -834,6 +924,8 @@
   }
   function deleteMaterial(id){ if(!hasPermission('manageSupplies')){toast('Accès refusé');return;}
     const m=data.materials.find(x=>x.id===id);if(!m)return;
+    const usedBy=data.recipes.filter(r=>r.ingredients.some(it=>it.materialId===id));
+    if(usedBy.length){toast(`Impossible : matière utilisée dans ${usedBy.length} recette(s)`);return;}
     confirmAction('Supprimer cette matière ?',`${m.name} sera retirée du catalogue fournisseur. Les anciennes commandes resteront dans l’historique.`,()=>{
       data.materials=data.materials.filter(x=>x.id!==id);
       state.supplyDraft=state.supplyDraft.filter(x=>x.id!==id);
@@ -844,18 +936,19 @@
     if(!state.supplyDraft.length)return;
     const total=supplyDraftTotal(),balance=Number(data.cashDrawerPesos||0);
     if(total>balance){toast(`Solde insuffisant : il manque ${peso(total-balance)}`);return;}
-    const qty=state.supplyDraft.reduce((s,i)=>s+i.qty,0);
-    confirmAction('Commander et payer ?',`Cette commande contient ${qty} unité(s) pour un total de ${peso(total)}. La somme sera immédiatement déduite du solde global.`,()=>{
+    const qty=state.supplyDraft.reduce((s,i)=>s+Number(i.qty||0),0);
+    confirmAction('Commander et payer ?',`Cette commande contient ${formatQty(qty)} unité(s) cumulée(s) pour un total de ${peso(total)}. La somme sera immédiatement déduite du solde global.`,()=>{
       const before=Number(data.cashDrawerPesos||0),after=before-total;
-      const order={id:'MAT-'+String(Date.now()).slice(-6),date:nowISO(),employee:state.currentUser.name,employeeId:state.currentUser.id,note:$('#supplyOrderNote').value.trim(),totalPesos:total,balanceBefore:before,balanceAfter:after,items:state.supplyDraft.map(i=>({...i}))};
+      const order={id:'MAT-'+String(Date.now()).slice(-6),date:nowISO(),employee:state.currentUser.name,employeeId:state.currentUser.id,note:$('#supplyOrderNote').value.trim(),totalPesos:total,balanceBefore:before,balanceAfter:after,items:state.supplyDraft.map(i=>({...i,qty:normalizeSupplyQty(i.qty)}))};
       data.cashDrawerPesos=after;
       data.supplyOrders.unshift(order);
       recordDrawerMovement('purchase',total,before,after,`Commande matières ${order.id}`,'MXN',total);
-      save();log('Commande matières',`${order.id} • ${peso(total)} • ${qty} unité(s)`);
+      save();log('Commande matières',`${order.id} • ${peso(total)} • ${formatQty(qty)} unité(s)`);
       state.supplyDraft=[];state.supplyNote='';$('#supplyOrderNote').value='';
       renderAll();toast(`Commande ${order.id} payée`);
     });
   }
+
   function exportSupplyOrdersCSV(){
     const rows=[['Date','Commande','Employé','Matière','Fournisseur','Quantité','Unité','Prix unité pesos','Total ligne pesos','Total commande pesos','Solde après','Note']];
     data.supplyOrders.forEach(o=>o.items.forEach(i=>rows.push([formatDate(o.date),o.id,o.employee,i.name,i.supplier||'',i.qty,i.unit,Number(i.pricePesos).toFixed(2),Number(i.qty*i.pricePesos).toFixed(2),Number(o.totalPesos).toFixed(2),Number(o.balanceAfter).toFixed(2),o.note||''])));
@@ -986,6 +1079,10 @@
   $('#supplyOrderNote').oninput=e=>state.supplyNote=e.target.value;
   $('#submitSupplyOrder').onclick=()=>{if(requirePermission('manageSupplies'))submitSupplyOrder();};
   $('#exportSupplyOrders').onclick=exportSupplyOrdersCSV;
+  $$('.supply-subtab').forEach(b=>b.onclick=()=>setSupplyTab(b.dataset.supplyTab));
+  if($('#addRecipe'))$('#addRecipe').onclick=()=>openRecipeDialog();
+  if($('#addRecipeIngredient'))$('#addRecipeIngredient').onclick=()=>recipeItemsEditor([...collectRecipeItems(),{materialId:data.materials[0]?.id,qty:1}]);
+  if($('#recipeForm'))$('#recipeForm').addEventListener('submit',saveRecipe);
 if($('#cashPayBtn')) $('#cashPayBtn').onclick=()=>openOrderConfirmation('Espèces');
 
   if($('#orderConfirmForm')) $('#orderConfirmForm').addEventListener('submit',confirmAndCheckout);

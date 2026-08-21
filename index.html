@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#12100f" />
   <title>Rex's Diner — Caisse & Gestion</title>
-  <link rel="stylesheet" href="styles.css?v=11.13.0" />
-  <meta name="rexs-build" content="11.13.0" />
+  <link rel="stylesheet" href="styles.css?v=11.14.0" />
+  <meta name="rexs-build" content="11.14.0" />
 </head>
 <body>
   <div id="loginView" class="login-view">
@@ -232,6 +232,12 @@
 
           <div id="supplyMetrics" class="metrics"></div>
 
+          <div class="supply-subtabs" role="tablist" aria-label="Gestion des matières">
+            <button type="button" class="supply-subtab active" data-supply-tab="order">🛒 Commander des matières</button>
+            <button type="button" class="supply-subtab" data-supply-tab="recipes">🍳 Recettes & production</button>
+          </div>
+
+          <div id="supplyOrderTab">
           <div class="supply-layout">
             <article class="panel supply-catalog-panel">
               <div class="panel-heading">
@@ -276,6 +282,17 @@
                 <tbody id="supplyOrdersTable"></tbody>
               </table>
             </div>
+          </div>
+          </div>
+
+          <div id="supplyRecipesTab" class="hidden">
+            <article class="panel recipes-panel">
+              <div class="panel-heading recipes-heading">
+                <div><span class="kicker">FICHES DE PRODUCTION</span><h3>Recettes</h3><p>Définis les matières nécessaires pour une préparation, puis indique combien tu veux en produire.</p></div>
+                <button type="button" id="addRecipe" class="button button-primary">＋ Nouvelle recette</button>
+              </div>
+              <div id="recipeCards" class="recipe-cards"></div>
+            </article>
           </div>
         </section>
 
@@ -469,6 +486,33 @@
     </form>
   </dialog>
 
+  <dialog id="recipeDialog" class="dialog">
+    <form method="dialog" id="recipeForm">
+      <header>
+        <div><span class="kicker">RECETTE</span><h3 id="recipeDialogTitle">Créer une recette</h3></div>
+        <button type="button" class="dialog-close" data-close-dialog="recipeDialog">×</button>
+      </header>
+      <input id="recipeId" type="hidden" />
+      <div class="form-grid">
+        <label>Produit associé<select id="recipeProduct"><option value="">— Recette personnalisée —</option></select></label>
+        <label>Icône<input id="recipeIcon" maxlength="8" value="🍳" /></label>
+      </div>
+      <div class="form-stack recipe-name-row">
+        <label>Nom de la recette<input id="recipeName" maxlength="60" placeholder="Ex. Classic Burger" /></label>
+      </div>
+      <div class="recipe-ingredients-block">
+        <div class="panel-heading compact"><div><span class="kicker">POUR 1 PRÉPARATION</span><h3>Matières nécessaires</h3></div><button type="button" id="addRecipeIngredient" class="button button-soft compact">＋ Matière</button></div>
+        <div class="recipe-ingredient-head"><span>Matière</span><span>Quantité</span><span></span></div>
+        <div id="recipeIngredientsEditor" class="recipe-ingredients-editor"></div>
+        <small class="recipe-help">Exemple : 0,2 kg de viande + 1 unité de pain pour fabriquer 1 burger. Les besoins sont multipliés automatiquement par la quantité à produire.</small>
+      </div>
+      <footer>
+        <button type="button" class="button button-soft" data-close-dialog="recipeDialog">Annuler</button>
+        <button type="submit" class="button button-primary">Enregistrer la recette</button>
+      </footer>
+    </form>
+  </dialog>
+
 
   <dialog id="orderConfirmDialog" class="dialog order-confirm-dialog">
     <form method="dialog" id="orderConfirmForm">
@@ -514,6 +558,6 @@
     <footer><button type="button" class="button button-soft" data-close-dialog="confirmDialog">Annuler</button><button type="button" id="confirmButton" class="button button-danger">Confirmer</button></footer>
   </dialog>
 
-  <script src="app.js?v=11.13.0"></script>
+  <script src="app.js?v=11.14.0"></script>
 </body>
 </html>
