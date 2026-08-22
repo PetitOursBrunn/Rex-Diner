@@ -3,6 +3,7 @@
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
   const EXCHANGE_RATE=23;
+  const USD_CONVERSION_FEE_RATE=0.20;
   const THEME_KEY='rexs_diner_theme';
   const money = n => '$'+new Intl.NumberFormat('fr-BE',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(n)||0);
   const peso = n => new Intl.NumberFormat('fr-BE',{maximumFractionDigits:2}).format(Number(n)||0)+' pesos';
@@ -345,7 +346,7 @@
   }
 
 
-  const CLIENT_BUILD='11.15.0';
+  const CLIENT_BUILD='11.16.1';
   let buildCheckTimer=null;
 
   async function checkForNewBuild(force=false){
@@ -562,11 +563,12 @@
     confirmAction('Supprimer cette remise ?',`${d.name} (${d.percent} %) sera retirée de la caisse.`,()=>{data.discounts.splice(index,1);if(Number(state.discount)===Number(d.percent))state.discount=0;save();log('Remises',`${d.name} supprimée`);renderAll();toast('Remise supprimée');});
   }
   function calcTotals(){ const subtotal=state.cart.reduce((s,i)=>s+i.price*i.qty,0); const discount=subtotal*(Number(state.discount)/100); const total=Math.max(0,subtotal-discount); const tax=total-(total/(1+Number(data.taxRate)/100)); return{subtotal,discount,total,tax}; }
+  function calcPayment(t,currency=state.paymentCurrency){ const conversionFee=currency==='USD'?t.total*USD_CONVERSION_FEE_RATE:0; const paidTotal=currency==='MXN'?toPesos(t.total):t.total; const creditedUSD=currency==='USD'?Math.max(0,t.total-conversionFee):t.total; const creditedPesos=currency==='MXN'?paidTotal:toPesos(creditedUSD); return{conversionFee,paidTotal,creditedUSD,creditedPesos}; }
   function renderCart(){
     const count=state.cart.reduce((s,i)=>s+i.qty,0); $('#ticketItemCount').textContent=`${count} article${count>1?'s':''}`;
     $('#cartItems').innerHTML=state.cart.length?state.cart.map(i=>`<div class="cart-row"><div><h4>${escapeHtml(i.name)}</h4><small>${money(i.price)} / unité</small><div class="qty"><button type="button" data-cart-id="${i.id}" data-cart-type="${i.type||'product'}" data-delta="-1">−</button><b>${i.qty}</b><button type="button" data-cart-id="${i.id}" data-cart-type="${i.type||'product'}" data-delta="1">+</button></div></div><div class="cart-price">${money(i.price*i.qty)}</div></div>`).join(''):'<div class="empty-cart"><div><span class="big">🧾</span><b>Ticket vide</b><br>Ajoute un produit pour commencer.</div></div>';
     $$('[data-cart-id]').forEach(b=>b.onclick=()=>changeQty(Number(b.dataset.cartId),Number(b.dataset.delta),b.dataset.cartType||'product'));
-    const t=calcTotals(); const usePesos=state.paymentCurrency==='MXN'; $('#subtotal').textContent=usePesos?peso(toPesos(t.subtotal)):money(t.subtotal); $('#discountAmount').textContent=`− ${usePesos?peso(toPesos(t.discount)):money(t.discount)}`; $('#taxAmount').textContent=usePesos?peso(toPesos(t.tax)):money(t.tax); $('#total').textContent=usePesos?peso(toPesos(t.total)):money(t.total); $('#convertedTotal').textContent=usePesos?money(t.total):peso(toPesos(t.total)); $$('.payment').forEach(b=>b.disabled=!state.cart.length); $('#holdSale').disabled=!state.cart.length;
+    const t=calcTotals(); const usePesos=state.paymentCurrency==='MXN'; const payment=calcPayment(t,state.paymentCurrency); $('#subtotal').textContent=usePesos?peso(toPesos(t.subtotal)):money(t.subtotal); $('#discountAmount').textContent=`− ${usePesos?peso(toPesos(t.discount)):money(t.discount)}`; $('#taxAmount').textContent=usePesos?peso(toPesos(t.tax)):money(t.tax); const feeRow=$('#conversionFeeRow'); if(feeRow)feeRow.hidden=usePesos; const feeEl=$('#conversionFeeAmount'); if(feeEl)feeEl.textContent=usePesos?money(0):`− ${money(payment.conversionFee)}`; $('#total').textContent=usePesos?peso(toPesos(t.total)):money(t.total); $('#convertedTotal').textContent=usePesos?money(t.total):`${money(payment.creditedUSD)} nets • ${peso(payment.creditedPesos)}`; $$('.payment').forEach(b=>b.disabled=!state.cart.length); $('#holdSale').disabled=!state.cart.length;
   }
 
   function openOrderConfirmation(method='Espèces'){
@@ -599,11 +601,14 @@
       ? `− ${usePesos?peso(toPesos(discountValue)):money(discountValue)}`
       : (usePesos?peso(0):money(0));
 
+    const payment=calcPayment(t,currency);
+    const feeRow=$('#orderConfirmConversionFeeRow'); if(feeRow)feeRow.hidden=usePesos;
+    const feeAmount=$('#orderConfirmConversionFee'); if(feeAmount)feeAmount.textContent=usePesos?money(0):`− ${money(payment.conversionFee)}`;
     $('#orderConfirmTotal').textContent=usePesos?peso(toPesos(t.total)):money(t.total);
 
     const paymentText=currency==='USD'
-      ? `Paiement en espèces • ${money(t.total)} = ${peso(toPesos(t.total))}`
-      : `Paiement en espèces • ${peso(toPesos(t.total))}`;
+      ? `Paiement en espèces • client paie ${money(t.total)} • frais retenus ${money(payment.conversionFee)} • caisse créditée de ${money(payment.creditedUSD)} (${peso(payment.creditedPesos)})`
+      : `Paiement en espèces • ${peso(toPesos(t.total))} • sans frais de conversion`;
 
     $('#orderConfirmPaymentText').textContent=paymentText;
     openDialog('orderConfirmDialog');
@@ -629,10 +634,10 @@
     method='Espèces';
     if(!state.cart.length)return; const stockCheck=validateCartStock(); if(!stockCheck.ok){toast(`Stock insuffisant : ${stockCheck.product?.name||'produit'}`);return;}
     const t=calcTotals(); for(const [productId,qty] of cartRequirements()){const p=data.products.find(x=>x.id===productId);if(p)p.stock-=qty;}
-    const currency=state.paymentCurrency; const paidTotal=currency==='MXN'?toPesos(t.total):t.total;
-    const sale={id:'RX-'+String(Date.now()).slice(-6),date:nowISO(),employee:state.currentUser.name,employeeId:state.currentUser.id,method,currency,paidTotal,exchangeRate:EXCHANGE_RATE,note:state.orderNote.trim(),discount:Number(state.discount),subtotal:t.subtotal,total:t.total,tax:t.tax,items:state.cart.map(i=>({...i}))};
+    const currency=state.paymentCurrency; const payment=calcPayment(t,currency); const paidTotal=payment.paidTotal;
+    const sale={id:'RX-'+String(Date.now()).slice(-6),date:nowISO(),employee:state.currentUser.name,employeeId:state.currentUser.id,method,currency,paidTotal,exchangeRate:EXCHANGE_RATE,conversionFeeRate:currency==='USD'?USD_CONVERSION_FEE_RATE:0,conversionFee:payment.conversionFee,creditedUSD:payment.creditedUSD,creditedPesos:payment.creditedPesos,note:state.orderNote.trim(),discount:Number(state.discount),subtotal:t.subtotal,total:t.total,tax:t.tax,items:state.cart.map(i=>({...i}))};
     if(method==='Espèces'){
-      const creditedPesos=currency==='MXN'?paidTotal:toPesos(paidTotal);
+      const creditedPesos=payment.creditedPesos;
       const before=Number(data.cashDrawerPesos||0); data.cashDrawerPesos=before+creditedPesos;
       recordDrawerMovement('sale',creditedPesos,before,data.cashDrawerPesos,`Vente ${sale.id} • payée en ${currencyName(currency)}`,currency,paidTotal);
     }
@@ -640,7 +645,7 @@
   function holdSale(){ if(!state.cart.length)return; data.heldSales.unshift({id:'ATT-'+String(Date.now()).slice(-5),date:nowISO(),employee:state.currentUser.name,note:state.orderNote,discount:state.discount,items:state.cart.map(i=>({...i}))}); save(); log('Vente en attente',`${data.heldSales[0].id} • ${state.cart.reduce((s,i)=>s+i.qty,0)} article(s)`); state.cart=[];state.orderNote='';state.discount=0;$('#orderNote').value='';$('#discountSelect').value='0';renderCart();toast('Commande mise en attente'); }
   function showReceipt(sale){
     const lines=sale.items.map(i=>`<div class="receipt-line"><span>${i.qty} × ${escapeHtml(i.name)}</span><b>${money(i.qty*i.price)}</b></div>`).join('');
-    $('#receiptContent').innerHTML=`<div class="receipt-head"><div class="logo">REX'S DINER</div><small>Merci et à bientôt !</small></div><div class="receipt-meta"><span>Ticket</span><b>${sale.id}</b><span>Date</span><b>${formatDate(sale.date)}</b><span>Employé</span><b>${escapeHtml(sale.employee)}</b><span>Paiement</span><b>${escapeHtml(sale.method)} • ${currencyName(sale.currency||'USD')}</b></div><div class="receipt-lines">${lines}</div>${sale.discount?`<div class="receipt-line"><span>Remise ${sale.discount}%</span><b>− ${money(sale.subtotal-sale.total)}</b></div>`:''}<div class="receipt-total-line"><span>TOTAL</span><span>${currencyAmount(sale.paidTotal ?? (sale.currency==='MXN'?toPesos(sale.total):sale.total),sale.currency||'USD')}</span></div><div class="receipt-line receipt-conversion"><span>Équivalent</span><b>${sale.currency==='MXN'?money(sale.total):peso(toPesos(sale.total))}</b></div>${sale.note?`<div class="receipt-note">Note : ${escapeHtml(sale.note)}</div>`:''}`;
+    $('#receiptContent').innerHTML=`<div class="receipt-head"><div class="logo">REX'S DINER</div><small>Merci et à bientôt !</small></div><div class="receipt-meta"><span>Ticket</span><b>${sale.id}</b><span>Date</span><b>${formatDate(sale.date)}</b><span>Employé</span><b>${escapeHtml(sale.employee)}</b><span>Paiement</span><b>${escapeHtml(sale.method)} • ${currencyName(sale.currency||'USD')}</b></div><div class="receipt-lines">${lines}</div>${sale.discount?`<div class="receipt-line"><span>Remise ${sale.discount}%</span><b>− ${money(sale.subtotal-sale.total)}</b></div>`:''}${sale.currency==='USD'&&Number(sale.conversionFee||0)>0?`<div class="receipt-line"><span>Frais de conversion retenus 20 %</span><b>− ${money(sale.conversionFee)}</b></div>`:''}<div class="receipt-total-line"><span>TOTAL PAYÉ</span><span>${currencyAmount(sale.paidTotal ?? (sale.currency==='MXN'?toPesos(sale.total):sale.total),sale.currency||'USD')}</span></div><div class="receipt-line receipt-conversion"><span>${sale.currency==='USD'?'Net versé en caisse':'Équivalent'}</span><b>${sale.currency==='MXN'?money(sale.total):`${money(sale.creditedUSD ?? Math.max(0,(sale.total||0)-Number(sale.conversionFee||0)))} • ${peso(sale.creditedPesos ?? toPesos(Math.max(0,(sale.total||0)-Number(sale.conversionFee||0))))}`}</b></div>${sale.note?`<div class="receipt-note">Note : ${escapeHtml(sale.note)}</div>`:''}`;
     openDialog('receiptDialog');
   }
 
@@ -968,7 +973,7 @@
 
   function renderSales(){
     const count=data.sales.length,rev=revenue();$('#salesMetrics').innerHTML=[metric('$','Chiffre d’affaires',money(rev),'total encaissé','teal'),metric('#','Tickets',count,'commandes'),metric('Ø','Ticket moyen',money(count?rev/count:0),'par commande'),metric('+','Articles vendus',itemsSold(),'unités')].join('');
-    const q=state.salesSearch.toLowerCase().trim(); const list=data.sales.filter(s=>`${s.id} ${s.employee} ${s.method}`.toLowerCase().includes(q)); $('#salesTable').innerHTML=list.length?list.map(s=>`<tr><td>${formatDate(s.date)}</td><td>${escapeHtml(s.employee)}</td><td><b>${s.id}</b></td><td>${s.items.reduce((a,i)=>a+i.qty,0)}</td><td>${escapeHtml(s.method)} • ${currencyName(s.currency||'USD')}</td><td><b>${currencyAmount(s.paidTotal ?? (s.currency==='MXN'?toPesos(s.total):s.total),s.currency||'USD')}</b><small class="table-conversion">${s.currency==='MXN'?money(s.total):peso(toPesos(s.total))}</small></td><td><button type="button" class="table-action" data-receipt="${s.id}">Ticket</button></td></tr>`).join(''):'<tr><td colspan="7" class="empty-table">Aucune vente enregistrée.</td></tr>'; $$('[data-receipt]').forEach(b=>b.onclick=()=>{const s=data.sales.find(x=>x.id===b.dataset.receipt);if(s)showReceipt(s);});
+    const q=state.salesSearch.toLowerCase().trim(); const list=data.sales.filter(s=>`${s.id} ${s.employee} ${s.method}`.toLowerCase().includes(q)); $('#salesTable').innerHTML=list.length?list.map(s=>`<tr><td>${formatDate(s.date)}</td><td>${escapeHtml(s.employee)}</td><td><b>${s.id}</b></td><td>${s.items.reduce((a,i)=>a+i.qty,0)}</td><td>${escapeHtml(s.method)} • ${currencyName(s.currency||'USD')}</td><td><b>${currencyAmount(s.paidTotal ?? (s.currency==='MXN'?toPesos(s.total):s.total),s.currency||'USD')}</b><small class="table-conversion">${s.currency==='MXN'?money(s.total):peso(toPesos(s.paidTotal ?? s.total))}</small></td><td><button type="button" class="table-action" data-receipt="${s.id}">Ticket</button></td></tr>`).join(''):'<tr><td colspan="7" class="empty-table">Aucune vente enregistrée.</td></tr>'; $$('[data-receipt]').forEach(b=>b.onclick=()=>{const s=data.sales.find(x=>x.id===b.dataset.receipt);if(s)showReceipt(s);});
   }
   function exportSalesCSV(){ const rows=[['Date','Employé','Ticket','Articles','Paiement','Devise','Total payé','Equivalent USD'],...data.sales.map(s=>[formatDate(s.date),s.employee,s.id,s.items.reduce((a,i)=>a+i.qty,0),s.method,currencyName(s.currency||'USD'),Number(s.paidTotal ?? (s.currency==='MXN'?toPesos(s.total):s.total)).toFixed(2),Number(s.total).toFixed(2)])]; const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(';')).join('\n'); downloadBlob(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),'rexs-diner-ventes.csv'); toast('Export CSV créé'); }
 
@@ -1048,7 +1053,7 @@
 
   function renderJournal(){ const q=state.journalSearch.toLowerCase().trim();const list=data.journal.filter(j=>`${j.employee} ${j.action} ${j.detail}`.toLowerCase().includes(q));$('#journalTable').innerHTML=list.length?list.map(j=>`<tr><td>${formatDate(j.date)}</td><td>${escapeHtml(j.employee)}</td><td><b>${escapeHtml(j.action)}</b></td><td>${escapeHtml(j.detail)}</td></tr>`).join(''):'<tr><td colspan="4" class="empty-table">Aucune activité enregistrée.</td></tr>'; }
 
-  function exportData(){ const payload={version:11.15,exportedAt:nowISO(),data}; downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`rexs-diner-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);toast('Sauvegarde téléchargée'); }
+  function exportData(){ const payload={version:11.16,exportedAt:nowISO(),data}; downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`rexs-diner-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);toast('Sauvegarde téléchargée'); }
   function importData(file){ const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result);const source=parsed.data||parsed;if(!Array.isArray(source.products)||!Array.isArray(source.employees))throw new Error();confirmAction('Importer cette sauvegarde ?','Les données actuelles seront remplacées.',()=>{Object.assign(data,fresh(),source);normalizeData(data);save();log('Sauvegarde','Données importées');renderAll();renderLogin();toast('Sauvegarde importée');});}catch{toast('Fichier de sauvegarde invalide');}};reader.readAsText(file); }
   function downloadBlob(blob,name){ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500); }
 

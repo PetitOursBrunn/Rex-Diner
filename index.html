@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#12100f" />
   <title>Rex's Diner — Caisse & Gestion</title>
-  <link rel="stylesheet" href="styles.css?v=11.15.0" />
-  <meta name="rexs-build" content="11.15.0" />
+  <link rel="stylesheet" href="styles.css?v=11.16.1" />
+  <meta name="rexs-build" content="11.16.1" />
 </head>
 <body>
   <div id="loginView" class="login-view">
@@ -182,15 +182,16 @@
                   <button type="button" class="active" data-currency="USD"><b>$</b><span>Dollars</span></button>
                   <button type="button" data-currency="MXN"><b>₱</b><span>Pesos</span></button>
                 </div>
-                <small>Conversion automatique : 1 $ = 23 pesos</small>
+                <small>Dollars : le client paie le total affiché. 20 % sont retenus comme frais de conversion avant crédit de la caisse en pesos (1 $ = 23 pesos). Aucun frais en pesos.</small>
               </div>
 
               <div class="totals">
                 <div><span>Sous-total</span><b id="subtotal">$0.00</b></div>
                 <div><span>Remise</span><b id="discountAmount">$0.00</b></div>
                 <div><span>TVA incluse</span><b id="taxAmount">$0.00</b></div>
+                <div id="conversionFeeRow"><span>Frais conversion retenus (20 %)</span><b id="conversionFeeAmount">−$0.00</b></div>
                 <div class="grand"><span>Total</span><b id="total">$0.00</b></div>
-                <div class="converted-total"><span>Équivalent</span><b id="convertedTotal">0 pesos</b></div>
+                <div class="converted-total"><span>Net versé en caisse</span><b id="convertedTotal">0 pesos</b></div>
               </div>
 
               <div class="payment-buttons">
@@ -535,6 +536,7 @@
       <div class="order-confirm-totals">
         <div><span>Sous-total</span><strong id="orderConfirmSubtotal">0</strong></div>
         <div><span>Remise</span><strong id="orderConfirmDiscount">0</strong></div>
+        <div id="orderConfirmConversionFeeRow"><span>Frais conversion retenus (20 %)</span><strong id="orderConfirmConversionFee">0</strong></div>
         <div class="order-confirm-grand"><span>Total</span><strong id="orderConfirmTotal">0</strong></div>
       </div>
 
@@ -558,6 +560,6 @@
     <footer><button type="button" class="button button-soft" data-close-dialog="confirmDialog">Annuler</button><button type="button" id="confirmButton" class="button button-danger">Confirmer</button></footer>
   </dialog>
 
-  <script src="app.js?v=11.15.0"></script>
+  <script src="app.js?v=11.16.1"></script>
 </body>
 </html>

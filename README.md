@@ -1,4 +1,4 @@
-# Rex's Diner — V11.15.0
+# Rex's Diner — V11.16.1
 
 Cette version corrige le problème où certains utilisateurs voyaient encore une ancienne version après un nouveau déploiement.
 
@@ -11,7 +11,7 @@ Cette version corrige le problème où certains utilisateurs voyaient encore une
 
 ## Vérification
 Dans Réglages > Synchronisation, la version doit afficher :
-`11.15.0`
+`11.16.1`
 
 Si ton collègue voit une ancienne version, après déploiement de cette V11.8 :
 1. il ouvre le lien normalement ;
@@ -68,3 +68,12 @@ Le patron peut configurer les accès des grades Employé et Manager aux sections
 - En indiquant le nombre d’unités à produire, les besoins sont multipliés et ajoutés automatiquement au panier fournisseur.
 - Les besoins d’une recette se cumulent avec les matières déjà présentes dans le panier.
 - Les recettes sont intégrées aux données synchronisées et persistantes du serveur.
+
+
+## Nouveautés V11.16.1 — frais de conversion dollars retenus sur encaissement
+
+- Le paiement en dollars ne majore plus le montant demandé au client.
+- Une retenue de 20 % est calculée sur le total payé en dollars.
+- Seuls les 80 % restants sont convertis en pesos et ajoutés au fonds de caisse.
+- Exemple : 100 $ payés → 20 $ de frais → 80 $ nets → 1 840 pesos crédités à la caisse au taux 1 $ = 23 pesos.
+- Les paiements en pesos restent inchangés et sans frais de conversion.
