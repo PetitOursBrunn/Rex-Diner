@@ -1,4 +1,4 @@
-# Rex's Diner — V11.16.1
+# Rex's Diner — V11.17.0
 
 Cette version corrige le problème où certains utilisateurs voyaient encore une ancienne version après un nouveau déploiement.
 
@@ -11,7 +11,7 @@ Cette version corrige le problème où certains utilisateurs voyaient encore une
 
 ## Vérification
 Dans Réglages > Synchronisation, la version doit afficher :
-`11.16.1`
+`11.17.0`
 
 Si ton collègue voit une ancienne version, après déploiement de cette V11.8 :
 1. il ouvre le lien normalement ;
@@ -77,3 +77,10 @@ Le patron peut configurer les accès des grades Employé et Manager aux sections
 - Seuls les 80 % restants sont convertis en pesos et ajoutés au fonds de caisse.
 - Exemple : 100 $ payés → 20 $ de frais → 80 $ nets → 1 840 pesos crédités à la caisse au taux 1 $ = 23 pesos.
 - Les paiements en pesos restent inchangés et sans frais de conversion.
+
+
+## Nouveautés V11.17.0 — reçus de commandes avec recettes
+- Les recettes ajoutées au panier fournisseur sont mémorisées avec leur quantité de production.
+- L’historique des commandes de matières propose un bouton **Voir reçu**.
+- Le reçu affiche les matières commandées et les recettes sélectionnées.
+- Les anciennes commandes restent lisibles même sans information de recette.

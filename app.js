@@ -115,7 +115,7 @@
     sseConnected:false,pollConnected:false,pollTimer:null,reconnectTimer:null,
     lastServerContact:0,lastAppliedRevision:0
   };
-  const state={currentUser:null,loginUserId:null,pin:'',view:'dashboard',category:'Tous',productSearch:'',stockSearch:'',stockFilter:'all',salesSearch:'',journalSearch:'',materialSearch:'',supplyTab:'order',supplyDraft:[],supplyNote:'',recipeProduction:{},cart:[],orderNote:'',discount:0,stockTarget:null,stockMode:'add',confirmAction:null,paymentCurrency:'USD',drawerMode:'add',pendingCheckoutMethod:null,pendingCheckoutCurrency:null};
+  const state={currentUser:null,loginUserId:null,pin:'',view:'dashboard',category:'Tous',productSearch:'',stockSearch:'',stockFilter:'all',salesSearch:'',journalSearch:'',materialSearch:'',supplyTab:'order',supplyDraft:[],supplyNote:'',supplyRecipeSelections:[],recipeProduction:{},cart:[],orderNote:'',discount:0,stockTarget:null,stockMode:'add',confirmAction:null,paymentCurrency:'USD',drawerMode:'add',pendingCheckoutMethod:null,pendingCheckoutCurrency:null};
   function save(){
     localStorage.setItem(KEY,JSON.stringify(data));
     if(!sync.ready || sync.suppress){ return; }
@@ -346,7 +346,7 @@
   }
 
 
-  const CLIENT_BUILD='11.16.1';
+  const CLIENT_BUILD='11.17.0';
   let buildCheckTimer=null;
 
   async function checkForNewBuild(force=false){
@@ -798,7 +798,9 @@
       <td><b>${peso(o.totalPesos)}</b></td>
       <td>${peso(o.balanceAfter)}</td>
       <td>${escapeHtml(o.note||'—')}</td>
-    </tr>`).join(''):'<tr><td colspan="7" class="empty-table">Aucune commande de matières premières.</td></tr>';
+      <td class="right"><button type="button" class="table-action edit" data-supply-receipt="${escapeHtml(o.id)}">Voir reçu</button></td>
+    </tr>`).join(''):'<tr><td colspan="8" class="empty-table">Aucune commande de matières premières.</td></tr>';
+    $$('[data-supply-receipt]').forEach(b=>b.onclick=()=>openSupplyOrderReceipt(b.dataset.supplyReceipt));
   }
 
   function renderSupplyDraft(){
@@ -819,7 +821,7 @@
 
     $$('[data-supply-id]').forEach(b=>b.onclick=()=>changeSupplyQty(Number(b.dataset.supplyId),Number(b.dataset.supplyDelta)));
     $$('[data-supply-input]').forEach(input=>{input.onchange=()=>setSupplyQty(Number(input.dataset.supplyInput),input.value);input.onblur=()=>setSupplyQty(Number(input.dataset.supplyInput),input.value);});
-    $$('[data-remove-supply]').forEach(b=>b.onclick=()=>{state.supplyDraft=state.supplyDraft.filter(i=>i.id!==Number(b.dataset.removeSupply));renderSupplyDraft();});
+    $$('[data-remove-supply]').forEach(b=>b.onclick=()=>{state.supplyDraft=state.supplyDraft.filter(i=>i.id!==Number(b.dataset.removeSupply));if(!state.supplyDraft.length)state.supplyRecipeSelections=[];renderSupplyDraft();});
     const total=supplyDraftTotal();
     $('#supplyDraftTotal').textContent=peso(total);
     $('#supplyBalanceAfter').textContent=`Solde après commande : ${peso(Math.max(0,Number(data.cashDrawerPesos)-total))}`;
@@ -838,12 +840,14 @@
     const item=state.supplyDraft.find(x=>x.id===id);if(!item)return;
     const qty=normalizeSupplyQty(value);
     if(qty<=0)state.supplyDraft=state.supplyDraft.filter(x=>x.id!==id);else item.qty=qty;
+    if(!state.supplyDraft.length)state.supplyRecipeSelections=[];
     renderSupplyDraft();
   }
   function changeSupplyQty(id,delta){
     const item=state.supplyDraft.find(x=>x.id===id);if(!item)return;
     item.qty=normalizeSupplyQty(Math.max(0,Number(item.qty||0)+delta));
     if(item.qty===0)state.supplyDraft=state.supplyDraft.filter(x=>x.id!==id);
+    if(!state.supplyDraft.length)state.supplyRecipeSelections=[];
     renderSupplyDraft();
   }
 
@@ -869,6 +873,9 @@
     const r=data.recipes.find(x=>x.id===id);if(!r)return;
     const count=Math.max(1,Math.floor(Number(state.recipeProduction[id])||1));
     for(const it of r.ingredients)addMaterialToDraft(it.materialId,Number(it.qty)*count,{silent:true});
+    const selected=state.supplyRecipeSelections.find(x=>Number(x.recipeId)===Number(r.id));
+    if(selected)selected.qty+=count;
+    else state.supplyRecipeSelections.push({recipeId:r.id,name:recipeName(r),icon:r.icon||'🍳',qty:count});
     renderSupplyDraft();setSupplyTab('order');toast(`Besoins pour ${count} × ${recipeName(r)} ajoutés`);
   }
   function recipeItemsEditor(items=[]){
@@ -954,19 +961,28 @@
     const qty=state.supplyDraft.reduce((s,i)=>s+Number(i.qty||0),0);
     confirmAction('Commander et payer ?',`Cette commande contient ${formatQty(qty)} unité(s) cumulée(s) pour un total de ${peso(total)}. La somme sera immédiatement déduite du solde global.`,()=>{
       const before=Number(data.cashDrawerPesos||0),after=before-total;
-      const order={id:'MAT-'+String(Date.now()).slice(-6),date:nowISO(),employee:state.currentUser.name,employeeId:state.currentUser.id,note:$('#supplyOrderNote').value.trim(),totalPesos:total,balanceBefore:before,balanceAfter:after,items:state.supplyDraft.map(i=>({...i,qty:normalizeSupplyQty(i.qty)}))};
+      const order={id:'MAT-'+String(Date.now()).slice(-6),date:nowISO(),employee:state.currentUser.name,employeeId:state.currentUser.id,note:$('#supplyOrderNote').value.trim(),totalPesos:total,balanceBefore:before,balanceAfter:after,items:state.supplyDraft.map(i=>({...i,qty:normalizeSupplyQty(i.qty)})),recipes:state.supplyRecipeSelections.map(r=>({...r,qty:Math.max(1,Math.floor(Number(r.qty)||1))}))};
       data.cashDrawerPesos=after;
       data.supplyOrders.unshift(order);
       recordDrawerMovement('purchase',total,before,after,`Commande matières ${order.id}`,'MXN',total);
       save();log('Commande matières',`${order.id} • ${peso(total)} • ${formatQty(qty)} unité(s)`);
-      state.supplyDraft=[];state.supplyNote='';$('#supplyOrderNote').value='';
+      state.supplyDraft=[];state.supplyRecipeSelections=[];state.supplyNote='';$('#supplyOrderNote').value='';
       renderAll();toast(`Commande ${order.id} payée`);
     });
   }
 
+  function openSupplyOrderReceipt(orderId){
+    const order=data.supplyOrders.find(o=>String(o.id)===String(orderId));if(!order)return;
+    const itemLines=(Array.isArray(order.items)?order.items:[]).map(i=>`<div class="receipt-line"><span>${formatQty(i.qty)} ${escapeHtml(i.unit||'')} × ${escapeHtml(i.name)}</span><b>${peso((Number(i.qty)||0)*(Number(i.pricePesos)||0))}</b></div>`).join('');
+    const recipes=Array.isArray(order.recipes)?order.recipes:[];
+    const recipeLines=recipes.length?recipes.map(r=>`<div class="receipt-line supply-recipe-line"><span>${escapeHtml(r.icon||'🍳')} ${escapeHtml(r.name||'Recette')}</span><b>${Math.max(1,Math.floor(Number(r.qty)||1))} ×</b></div>`).join(''):'<div class="receipt-note">Aucune recette enregistrée pour cette commande (commande manuelle ou antérieure à cette fonctionnalité).</div>';
+    $('#receiptContent').innerHTML=`<div class="receipt-head"><div class="logo">REX'S DINER</div><small>Reçu de commande matières premières</small></div><div class="receipt-meta"><span>Commande</span><b>${escapeHtml(order.id)}</b><span>Date</span><b>${formatDate(order.date)}</b><span>Employé</span><b>${escapeHtml(order.employee||'—')}</b><span>Solde après</span><b>${peso(order.balanceAfter)}</b></div><div class="supply-receipt-section"><b class="supply-receipt-title">MATIÈRES COMMANDÉES</b><div class="receipt-lines">${itemLines}</div></div><div class="supply-receipt-section recipes"><b class="supply-receipt-title">RECETTES SÉLECTIONNÉES</b><div class="receipt-lines">${recipeLines}</div></div><div class="receipt-total-line"><span>TOTAL</span><span>${peso(order.totalPesos)}</span></div>${order.note?`<div class="receipt-note">Note : ${escapeHtml(order.note)}</div>`:''}`;
+    openDialog('receiptDialog');
+  }
+
   function exportSupplyOrdersCSV(){
-    const rows=[['Date','Commande','Employé','Matière','Fournisseur','Quantité','Unité','Prix unité pesos','Total ligne pesos','Total commande pesos','Solde après','Note']];
-    data.supplyOrders.forEach(o=>o.items.forEach(i=>rows.push([formatDate(o.date),o.id,o.employee,i.name,i.supplier||'',i.qty,i.unit,Number(i.pricePesos).toFixed(2),Number(i.qty*i.pricePesos).toFixed(2),Number(o.totalPesos).toFixed(2),Number(o.balanceAfter).toFixed(2),o.note||''])));
+    const rows=[['Date','Commande','Employé','Matière','Fournisseur','Quantité','Unité','Prix unité pesos','Total ligne pesos','Total commande pesos','Solde après','Recettes sélectionnées','Note']];
+    data.supplyOrders.forEach(o=>{const recipes=(Array.isArray(o.recipes)?o.recipes:[]).map(r=>`${Math.max(1,Math.floor(Number(r.qty)||1))} × ${r.name||'Recette'}`).join(' | ');o.items.forEach(i=>rows.push([formatDate(o.date),o.id,o.employee,i.name,i.supplier||'',i.qty,i.unit,Number(i.pricePesos).toFixed(2),Number(i.qty*i.pricePesos).toFixed(2),Number(o.totalPesos).toFixed(2),Number(o.balanceAfter).toFixed(2),recipes,o.note||'']))});
     const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(';')).join('\n');
     downloadBlob(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),'rexs-diner-commandes-matieres.csv');toast('Export des commandes créé');
   }
@@ -1053,7 +1069,7 @@
 
   function renderJournal(){ const q=state.journalSearch.toLowerCase().trim();const list=data.journal.filter(j=>`${j.employee} ${j.action} ${j.detail}`.toLowerCase().includes(q));$('#journalTable').innerHTML=list.length?list.map(j=>`<tr><td>${formatDate(j.date)}</td><td>${escapeHtml(j.employee)}</td><td><b>${escapeHtml(j.action)}</b></td><td>${escapeHtml(j.detail)}</td></tr>`).join(''):'<tr><td colspan="4" class="empty-table">Aucune activité enregistrée.</td></tr>'; }
 
-  function exportData(){ const payload={version:11.16,exportedAt:nowISO(),data}; downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`rexs-diner-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);toast('Sauvegarde téléchargée'); }
+  function exportData(){ const payload={version:11.17,exportedAt:nowISO(),data}; downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`rexs-diner-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);toast('Sauvegarde téléchargée'); }
   function importData(file){ const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result);const source=parsed.data||parsed;if(!Array.isArray(source.products)||!Array.isArray(source.employees))throw new Error();confirmAction('Importer cette sauvegarde ?','Les données actuelles seront remplacées.',()=>{Object.assign(data,fresh(),source);normalizeData(data);save();log('Sauvegarde','Données importées');renderAll();renderLogin();toast('Sauvegarde importée');});}catch{toast('Fichier de sauvegarde invalide');}};reader.readAsText(file); }
   function downloadBlob(blob,name){ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500); }
 
@@ -1090,7 +1106,7 @@
   $('#materialSearch').oninput=e=>{state.materialSearch=e.target.value;renderSupplies();};
   if($('#sortMaterialsAZ')) $('#sortMaterialsAZ').onclick=sortMaterialsAlphabetically;
   $('#openSupplyOrder').onclick=()=>{switchView('supplies');setTimeout(()=>$('#supplyDraftList').scrollIntoView({behavior:'smooth',block:'center'}),80);};
-  $('#clearSupplyDraft').onclick=()=>{if(!state.supplyDraft.length)return;confirmAction('Vider la commande en préparation ?','Les matières sélectionnées seront retirées du panier fournisseur.',()=>{state.supplyDraft=[];renderSupplyDraft();toast('Commande en préparation vidée');});};
+  $('#clearSupplyDraft').onclick=()=>{if(!state.supplyDraft.length)return;confirmAction('Vider la commande en préparation ?','Les matières sélectionnées seront retirées du panier fournisseur.',()=>{state.supplyDraft=[];state.supplyRecipeSelections=[];renderSupplyDraft();toast('Commande en préparation vidée');});};
   $('#supplyOrderNote').oninput=e=>state.supplyNote=e.target.value;
   $('#submitSupplyOrder').onclick=()=>{if(requirePermission('manageSupplies'))submitSupplyOrder();};
   $('#exportSupplyOrders').onclick=exportSupplyOrdersCSV;
