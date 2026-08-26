@@ -1,4 +1,4 @@
-# Rex's Diner — V11.17.0
+# Rex's Diner — V11.18.0
 
 Cette version corrige le problème où certains utilisateurs voyaient encore une ancienne version après un nouveau déploiement.
 
@@ -11,7 +11,7 @@ Cette version corrige le problème où certains utilisateurs voyaient encore une
 
 ## Vérification
 Dans Réglages > Synchronisation, la version doit afficher :
-`11.17.0`
+`11.18.0`
 
 Si ton collègue voit une ancienne version, après déploiement de cette V11.8 :
 1. il ouvre le lien normalement ;
@@ -84,3 +84,10 @@ Le patron peut configurer les accès des grades Employé et Manager aux sections
 - L’historique des commandes de matières propose un bouton **Voir reçu**.
 - Le reçu affiche les matières commandées et les recettes sélectionnées.
 - Les anciennes commandes restent lisibles même sans information de recette.
+
+
+## Nouveautés V11.18.0 — montants visibles sur les devises de la caisse
+- Les boutons Dollars et Pesos affichent désormais directement le total à payer dans chaque devise.
+- Les deux montants sont visibles simultanément sans changer de devise.
+- Les montants se mettent à jour automatiquement avec le panier et les remises.
+- Le comportement de paiement, le taux de change et la retenue de 20 % sur les paiements en dollars restent inchangés.
