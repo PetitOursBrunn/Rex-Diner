@@ -1,8 +1,8 @@
 {
   "name": "rexs-diner-pos-v8",
-  "version": "11.20.0",
+  "version": "11.21.0",
   "private": true,
-  "description": "Rex's Diner V11.20 avec bot Discord et logs temps réel",
+  "description": "Rex's Diner V11.21 avec bot Discord et logs temps réel",
   "scripts": {
     "start": "node server.js"
   },

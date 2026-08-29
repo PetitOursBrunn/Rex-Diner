@@ -10,7 +10,7 @@ const ROOT = __dirname;
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, '.data');
 const DATA_FILE = path.join(DATA_DIR, 'rexs-diner-data.json');
 const PORT = Number(process.env.PORT || 8080);
-const BUILD_VERSION = '11.20.0';
+const BUILD_VERSION = '11.21.0';
 const ACCESS_USER = process.env.REXS_ACCESS_USER || 'rex';
 const ACCESS_PASSWORD = process.env.REXS_ACCESS_PASSWORD || '';
 const REQUIRE_AUTH = ACCESS_PASSWORD.length > 0;
@@ -142,6 +142,31 @@ function requestAuth(res) {
   res.end("Accès protégé à Rex's Diner.");
 }
 
+
+async function mutateStateFromDiscord({ actor='Discord', action=null, detail=null, mutator, silent=false }) {
+  if (!state || typeof mutator !== 'function') throw new Error('État Rex non initialisé');
+  const previousState = JSON.parse(JSON.stringify(state));
+  await mutator(state);
+  normalizePayrollState(state);
+  if (!silent && action) {
+    if (!Array.isArray(state.journal)) state.journal = [];
+    state.journal.unshift({
+      id: Date.now() + Math.random(),
+      date: new Date().toISOString(),
+      employee: actor || 'Discord',
+      action,
+      detail: detail || 'Action effectuée depuis Discord'
+    });
+    state.journal = state.journal.slice(0, 500);
+  }
+  revision += 1;
+  await persist();
+  broadcast('discord-bot');
+  if (discordBot && !silent) {
+    discordBot.handleStateChange(previousState, state).catch(err => console.error('Discord mutation logs :', err.message));
+  }
+  return { ok:true, revision, state };
+}
 
 function persist() {
   const snapshot = JSON.stringify({ revision, updatedAt: new Date().toISOString(), data: state }, null, 2);
@@ -338,7 +363,7 @@ const server = http.createServer(async (req, res) => {
 
 setInterval(() => { processPayroll().catch(err => console.error('Erreur salaire :', err.message)); }, 1000);
 
-discordBot = new RexDiscordBot({ getState:()=>state, buildVersion:BUILD_VERSION });
+discordBot = new RexDiscordBot({ getState:()=>state, mutateState:mutateStateFromDiscord, buildVersion:BUILD_VERSION });
 discordBot.start().catch(err=>console.error('Erreur bot Discord :',err.message));
 
 server.listen(PORT, '0.0.0.0', () => {

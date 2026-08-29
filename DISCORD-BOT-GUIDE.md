@@ -1,38 +1,50 @@
-# Bot Discord Rex's Diner — V11.20.0
+# Bot Discord Rex's Diner — V11.21.0
 
-Le bot est directement intégré au serveur Node.js de Rex's Diner. Il n'a pas besoin d'un deuxième hébergement : lorsque le site démarre sur Render, le bot démarre avec lui.
+Le bot est intégré au même serveur Node.js que Rex's Diner. Il démarre avec le site sur Render et reste totalement non bloquant : une panne Discord n'empêche jamais la caisse ou la synchronisation du site de fonctionner.
 
-## Ce que le bot journalise
+## Nouveautés V11.21.0
 
-Le bot surveille le journal serveur et envoie des embeds Discord pour les actions importantes réellement enregistrées par le site :
+La V11.21 transforme le bot de journalisation en véritable console de gestion sécurisée.
 
-- connexions et verrouillages ;
-- prises et fins de service ;
-- ventes encaissées avec ticket, produits, devise, total client et montant net crédité ;
-- ventes mises en attente ;
-- modifications de stock et alertes de rupture/stock faible ;
-- création, modification et suppression de produits ;
-- menus et catégories ;
-- commandes de matières premières avec détail des achats, recettes sélectionnées et produits ajoutés au stock ;
-- recettes et matières premières ;
-- mouvements du fond de caisse ;
-- salaires automatiques ;
-- employés ;
-- permissions ;
-- remises ;
-- réglages, sauvegardes et opérations d'administration ;
-- suppression du journal d'activité.
+### Consultation
+- `/rex-dashboard` : tableau de bord du jour ;
+- `/rex-status` : état du site et du bot ;
+- `/rex-stats` : statistiques par période et par employé ;
+- `/rex-ventes` : derniers tickets avec produits, employé, heure et net encaissé ;
+- `/rex-services` : employés en service et prochain salaire ;
+- `/rex-stock` : alertes, ruptures ou stock complet ;
+- `/rex-caisse` : fond de caisse et derniers mouvements ;
+- `/rex-commandes` : dernières commandes de matières ;
+- `/rex-config` : configuration et santé du bot.
 
-Les erreurs Discord ne bloquent jamais la caisse : si Discord est temporairement indisponible, le site continue de fonctionner normalement.
+### Gestion depuis Discord
+- `/rex-service` : démarrer ou terminer le service d'un employé ;
+- `/rex-stock-ajuster` : ajouter, retirer ou définir exactement le stock d'un produit ;
+- `/rex-caisse-ajuster` : ajouter, retirer ou définir la caisse. Cette commande est réservée par défaut aux administrateurs Discord.
+
+Toutes les commandes de modification exigent `confirmer=true`. Toute modification réalisée depuis Discord est répercutée en temps réel sur le site, sauvegardée sur le serveur et ajoutée au journal d'activité avec le nom Discord de la personne ayant effectué l'action.
+
+### Rapports
+- `/rex-rapport` génère un rapport pour aujourd'hui, 7 jours, 30 jours ou tout l'historique ;
+- `publier=true` l'envoie dans `#rex-rapports` ;
+- un rapport quotidien est envoyé automatiquement (23:55 par défaut) ;
+- un rapport hebdomadaire est envoyé automatiquement (dimanche 20:00 par défaut) ;
+- les rapports automatiques sont dédupliqués dans les données serveur afin d'éviter les doublons après un redémarrage Render.
+
+Les rapports contiennent ventes, unités vendues, net encaissé, ticket moyen, caisse, employés en service, produits les plus vendus, classement des encaissements employés et stocks faibles/ruptures.
+
+### Alertes stock intelligentes
+Le bot compare l'état précédent et le nouvel état des produits. Il signale uniquement les transitions utiles :
+- stock normal → stock faible ;
+- stock faible → rupture ;
+- stock normal → rupture ;
+- stock faible/rupture → stock rétabli.
+
+Cela évite de spammer Discord à chaque synchronisation. Le rôle `DISCORD_ALERT_ROLE_ID` peut être mentionné en rupture et, avec `DISCORD_ALERT_LOW_STOCK=true`, dès le stock faible.
 
 ## Salons automatiques
 
-Avec `DISCORD_AUTO_SETUP=true`, le bot crée une catégorie privée :
-
-`🦖 Rex's Diner • Logs`
-
-et les salons suivants :
-
+Avec `DISCORD_AUTO_SETUP=true`, le bot conserve les salons existants et ajoute si nécessaire :
 - `#rex-activite`
 - `#rex-ventes`
 - `#rex-stocks`
@@ -41,40 +53,44 @@ et les salons suivants :
 - `#rex-equipe`
 - `#rex-admin`
 - `#rex-systeme`
+- `#rex-alertes`
+- `#rex-rapports`
 
-La catégorie est invisible pour `@everyone`. Les administrateurs Discord la voient grâce à leur permission Administrateur. Les rôles présents dans `DISCORD_ALLOWED_ROLE_IDS` reçoivent aussi l'accès en lecture lors de la création automatique.
-
-## Commandes Discord
-
-Les commandes sont réservées aux administrateurs Discord et, si configurés, aux rôles présents dans `DISCORD_ALLOWED_ROLE_IDS` :
-
-- `/rex-status` : état du site, version, bot, fond de caisse et nombre d'employés en service ;
-- `/rex-stats` : ventes, articles encaissés, total net encaissé et fond de caisse actuel ;
-- `/rex-services` : employés actuellement en service ;
-- `/rex-stock` : stocks faibles et ruptures ;
-- `/rex-test` : test d'envoi dans Discord ;
-- `/rex-help` : aide rapide.
-
-Les réponses contenant des chiffres internes sont éphémères : seul l'utilisateur qui lance la commande les voit.
-
-## Variables Render nécessaires
-
-Obligatoires :
-
-- `DISCORD_BOT_TOKEN` : token secret du bot ;
-- `DISCORD_GUILD_ID` : ID du serveur Discord.
-
-Recommandées :
-
-- `DISCORD_AUTO_SETUP=true`
-- `DISCORD_STARTUP_MESSAGE=true`
-- `DISCORD_ALLOWED_ROLE_IDS` : ID d'un ou plusieurs rôles Discord, séparés par des virgules ;
-- `DISCORD_ALERT_ROLE_ID` : rôle à mentionner en cas d'alerte importante, par exemple une rupture de stock.
-
-Les variables `DISCORD_*_CHANNEL_ID` de `.env.example` permettent de remplacer les salons automatiques par des salons existants.
+Les salons sont rangés dans `🦖 Rex's Diner • Logs`.
 
 ## Sécurité
 
-Le token Discord doit uniquement être stocké dans les variables d'environnement Render. Ne jamais le mettre dans GitHub, `app.js`, `index.html`, une capture d'écran ou un message public. Si un token est exposé, il faut immédiatement le réinitialiser depuis le portail développeur Discord.
+`DISCORD_BOT_TOKEN` doit uniquement rester dans les variables d'environnement Render.
 
-Le bot n'a pas besoin de lire les messages des membres ni d'activer le Message Content Intent. Il utilise uniquement l'intent Guilds.
+Les commandes sont réservées aux administrateurs Discord et aux rôles listés dans `DISCORD_ALLOWED_ROLE_IDS`. L'ajustement de caisse est encore plus strict : seuls les administrateurs Discord peuvent l'utiliser tant que `DISCORD_ALLOW_CASH_FOR_ROLES=false`.
+
+Le bot n'utilise pas le Message Content Intent : il n'écoute pas les messages privés ou les conversations du serveur. Il utilise les interactions slash Discord.
+
+## Variables recommandées sur Render
+
+```text
+DISCORD_AUTO_SETUP=true
+DISCORD_STARTUP_MESSAGE=true
+DISCORD_ALLOWED_ROLE_IDS=ID_DU_ROLE_DIRECTION
+DISCORD_ALERT_ROLE_ID=ID_DU_ROLE_A_PREVENIR
+DISCORD_ALERT_LOW_STOCK=true
+DISCORD_ALLOW_CASH_FOR_ROLES=false
+TZ=Europe/Brussels
+DISCORD_DAILY_REPORT_TIME=23:55
+DISCORD_WEEKLY_REPORT_DAY=0
+DISCORD_WEEKLY_REPORT_TIME=20:00
+```
+
+Les horaires sont au format `HH:MM`. Pour le jour hebdomadaire : 0=dimanche, 1=lundi, ... 6=samedi.
+
+## Optimisations techniques
+
+- file d'envoi Discord pour lisser les notifications ;
+- temporisation légère entre messages ;
+- jusqu'à trois tentatives en cas d'échec temporaire d'envoi ;
+- déduplication des événements ;
+- réponses sensibles éphémères ;
+- autocomplétion des employés et produits ;
+- synchronisation SSE du site après une action Discord ;
+- persistance immédiate des mutations Discord ;
+- bot totalement isolé du chemin critique de la caisse.

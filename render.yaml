@@ -27,6 +27,18 @@ services:
         sync: false
       - key: DISCORD_ALERT_ROLE_ID
         sync: false
+      - key: DISCORD_ALERT_LOW_STOCK
+        value: "true"
+      - key: DISCORD_ALLOW_CASH_FOR_ROLES
+        value: "false"
+      - key: TZ
+        value: Europe/Brussels
+      - key: DISCORD_DAILY_REPORT_TIME
+        value: "23:55"
+      - key: DISCORD_WEEKLY_REPORT_DAY
+        value: "0"
+      - key: DISCORD_WEEKLY_REPORT_TIME
+        value: "20:00"
     disk:
       name: rexs-diner-data
       mountPath: /var/data

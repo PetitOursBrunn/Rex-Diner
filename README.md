@@ -1,4 +1,4 @@
-# Rex's Diner — V11.20.0
+# Rex's Diner — V11.21.0
 
 Cette version corrige le problème où certains utilisateurs voyaient encore une ancienne version après un nouveau déploiement.
 
@@ -11,7 +11,7 @@ Cette version corrige le problème où certains utilisateurs voyaient encore une
 
 ## Vérification
 Dans Réglages > Synchronisation, la version doit afficher :
-`11.20.0`
+`11.21.0`
 
 Si ton collègue voit une ancienne version, après déploiement de cette V11.8 :
 1. il ouvre le lien normalement ;
@@ -109,3 +109,18 @@ Le patron peut configurer les accès des grades Employé et Manager aux sections
 - Commandes sensibles réservées aux administrateurs Discord ou aux rôles configurés.
 - Une panne Discord ne bloque jamais le fonctionnement du site.
 - Configuration complète dans `DISCORD-BOT-GUIDE.md`.
+
+
+## Nouveautés V11.21.0 — Bot Discord Manager
+- Nouveau tableau de bord Discord avec `/rex-dashboard`.
+- Statistiques filtrables par période et par employé avec `/rex-stats`.
+- Consultation détaillée des ventes avec `/rex-ventes`.
+- Gestion des prises/fins de service depuis Discord avec `/rex-service`.
+- Ajustement des stocks depuis Discord avec autocomplétion des produits et confirmation obligatoire.
+- Consultation de la caisse et ajustement sécurisé de la caisse réservé par défaut aux administrateurs Discord.
+- Consultation des dernières commandes de matières premières.
+- Rapports manuels et automatiques quotidiens/hebdomadaires dans `#rex-rapports`.
+- Nouveau salon `#rex-alertes` avec alertes intelligentes lors des passages en stock faible, rupture et retour à la normale.
+- Toutes les mutations Discord sont persistées, synchronisées en temps réel avec le site et inscrites dans le journal d’activité.
+- File d’envoi, temporisation, retries et déduplication pour réduire le spam et améliorer la fiabilité Discord.
+- Les fonctionnalités V11.20.0 et toutes les fonctions antérieures du site sont conservées.
