@@ -4,12 +4,13 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { RexDiscordBot } = require('./discord-bot');
 
 const ROOT = __dirname;
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, '.data');
 const DATA_FILE = path.join(DATA_DIR, 'rexs-diner-data.json');
 const PORT = Number(process.env.PORT || 8080);
-const BUILD_VERSION = '11.19.0';
+const BUILD_VERSION = '11.20.0';
 const ACCESS_USER = process.env.REXS_ACCESS_USER || 'rex';
 const ACCESS_PASSWORD = process.env.REXS_ACCESS_PASSWORD || '';
 const REQUIRE_AUTH = ACCESS_PASSWORD.length > 0;
@@ -20,6 +21,7 @@ let state = null;
 let revision = 0;
 let clients = new Set();
 let writeQueue = Promise.resolve();
+let discordBot = null;
 
 function readStored() {
   try {
@@ -85,8 +87,10 @@ async function processPayroll() {
           state.payrollTransactions = state.payrollTransactions.slice(0,1000);
           state.drawerMovements.unshift({id:Date.now()+Math.random(),date:new Date().toISOString(),employee:'Système',currency:'MXN',type:'salary',amount:salary,before,after,reason:`Salaire de ${emp.name}`,originalCurrency:'MXN',originalAmount:salary});
           state.drawerMovements = state.drawerMovements.slice(0,500);
-          state.journal.unshift({id:Date.now()+Math.random(),date:new Date().toISOString(),employee:'Système',action:'Salaire',detail:`${emp.name} • ${salary} pesos déduits du fond de caisse`});
+          const payrollJournalEntry={id:Date.now()+Math.random(),date:new Date().toISOString(),employee:'Système',action:'Salaire',detail:`${emp.name} • ${salary} pesos déduits du fond de caisse`};
+          state.journal.unshift(payrollJournalEntry);
           state.journal = state.journal.slice(0,500);
+          if(discordBot) discordBot.notifyJournal(payrollJournalEntry,state).catch(err=>console.error('Discord salaire :',err.message));
           processed.add(key);
         }
         due += intervalMs;
@@ -240,7 +244,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === '/health') {
-    return sendJson(res, 200, { ok:true, initialized:!!state, revision, clients:clients.size });
+    return sendJson(res, 200, { ok:true, initialized:!!state, revision, clients:clients.size, discord:{enabled:!!discordBot?.enabled?.(),ready:!!discordBot?.ready} });
   }
 
   if (!authorized(req)) {
@@ -279,6 +283,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const body = await readJson(req);
       if (!body.data || typeof body.data !== 'object') return sendJson(res, 400, { error:'Données invalides' });
+      const previousState = state;
       const incoming = normalizePayrollState(body.data);
       if (state) {
         normalizePayrollState(state);
@@ -295,6 +300,7 @@ const server = http.createServer(async (req, res) => {
       await persist();
       await processPayroll();
       broadcast(body.clientId || 'unknown');
+      if(discordBot && previousState) discordBot.handleStateChange(previousState,state).catch(err=>console.error('Discord logs :',err.message));
       return sendJson(res, 200, { ok:true, revision });
     } catch (err) {
       return sendJson(res, 400, { error:'Données invalides' });
@@ -332,6 +338,9 @@ const server = http.createServer(async (req, res) => {
 
 setInterval(() => { processPayroll().catch(err => console.error('Erreur salaire :', err.message)); }, 1000);
 
+discordBot = new RexDiscordBot({ getState:()=>state, buildVersion:BUILD_VERSION });
+discordBot.start().catch(err=>console.error('Erreur bot Discord :',err.message));
+
 server.listen(PORT, '0.0.0.0', () => {
   const interfaces = os.networkInterfaces();
   const ips = [];
@@ -350,6 +359,7 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log("  Garde cette fenêtre ouverte pendant l'utilisation.");
   console.log(`  Données persistantes : ${DATA_DIR}`);
   console.log(`  Protection web : ${REQUIRE_AUTH ? 'activée' : 'DÉSACTIVÉE'}`);
+  console.log(`  Bot Discord : ${discordBot?.enabled() ? 'activation en cours' : 'désactivé'}`);
   console.log("======================================================");
   console.log('');
 });

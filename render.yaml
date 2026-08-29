@@ -3,7 +3,7 @@ services:
     name: rexs-diner
     runtime: node
     plan: starter
-    buildCommand: ""
+    buildCommand: npm install
     startCommand: node server.js
     healthCheckPath: /health
     envVars:
@@ -14,6 +14,18 @@ services:
       - key: REXS_ACCESS_USER
         value: rex
       - key: REXS_ACCESS_PASSWORD
+        sync: false
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: DISCORD_GUILD_ID
+        sync: false
+      - key: DISCORD_AUTO_SETUP
+        value: "true"
+      - key: DISCORD_STARTUP_MESSAGE
+        value: "true"
+      - key: DISCORD_ALLOWED_ROLE_IDS
+        sync: false
+      - key: DISCORD_ALERT_ROLE_ID
         sync: false
     disk:
       name: rexs-diner-data

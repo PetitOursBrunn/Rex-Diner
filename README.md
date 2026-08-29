@@ -1,4 +1,4 @@
-# Rex's Diner — V11.19.0
+# Rex's Diner — V11.20.0
 
 Cette version corrige le problème où certains utilisateurs voyaient encore une ancienne version après un nouveau déploiement.
 
@@ -11,7 +11,7 @@ Cette version corrige le problème où certains utilisateurs voyaient encore une
 
 ## Vérification
 Dans Réglages > Synchronisation, la version doit afficher :
-`11.18.0`
+`11.20.0`
 
 Si ton collègue voit une ancienne version, après déploiement de cette V11.8 :
 1. il ouvre le lien normalement ;
@@ -97,3 +97,15 @@ Le patron peut configurer les accès des grades Employé et Manager aux sections
 - Lorsqu'une commande fournisseur contient des recettes liées à des produits, les quantités produites sont ajoutées automatiquement au stock des produits correspondants après validation de la commande.
 - Le reçu fournisseur indique les produits ajoutés au stock et le stock avant/après.
 - La section Employés affiche désormais les ventes détaillées de chaque employé, avec date/heure, ticket, produits, paiement, montant net encaissé, total individuel et total global.
+
+
+## Nouveautés V11.20.0 — Bot Discord temps réel
+- Bot Discord intégré au même serveur Node.js que le site.
+- Notifications riches pour les actions enregistrées : ventes, stocks, commandes, caisse, équipe, permissions et administration.
+- Détails enrichis pour les ventes et les commandes de matières.
+- Alertes de stock faible et rupture.
+- Création automatique facultative d'une catégorie privée et de salons de logs séparés.
+- Commandes `/rex-status`, `/rex-stats`, `/rex-services`, `/rex-stock`, `/rex-test` et `/rex-help`.
+- Commandes sensibles réservées aux administrateurs Discord ou aux rôles configurés.
+- Une panne Discord ne bloque jamais le fonctionnement du site.
+- Configuration complète dans `DISCORD-BOT-GUIDE.md`.

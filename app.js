@@ -346,7 +346,7 @@
   }
 
 
-  const CLIENT_BUILD='11.19.0';
+  const CLIENT_BUILD='11.20.0';
   let buildCheckTimer=null;
 
   async function checkForNewBuild(force=false){
