@@ -1,4 +1,4 @@
-# Rex's Diner — V11.18.0
+# Rex's Diner — V11.19.0
 
 Cette version corrige le problème où certains utilisateurs voyaient encore une ancienne version après un nouveau déploiement.
 
@@ -91,3 +91,9 @@ Le patron peut configurer les accès des grades Employé et Manager aux sections
 - Les deux montants sont visibles simultanément sans changer de devise.
 - Les montants se mettent à jour automatiquement avec le panier et les remises.
 - Le comportement de paiement, le taux de change et la retenue de 20 % sur les paiements en dollars restent inchangés.
+
+
+## Nouveautés V11.19.0 — stock recettes & ventes par employé
+- Lorsqu'une commande fournisseur contient des recettes liées à des produits, les quantités produites sont ajoutées automatiquement au stock des produits correspondants après validation de la commande.
+- Le reçu fournisseur indique les produits ajoutés au stock et le stock avant/après.
+- La section Employés affiche désormais les ventes détaillées de chaque employé, avec date/heure, ticket, produits, paiement, montant net encaissé, total individuel et total global.

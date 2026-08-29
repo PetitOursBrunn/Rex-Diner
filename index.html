@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#12100f" />
   <title>Rex's Diner — Caisse & Gestion</title>
-  <link rel="stylesheet" href="styles.css?v=11.18.0" />
-  <meta name="rexs-build" content="11.18.0" />
+  <link rel="stylesheet" href="styles.css?v=11.19.0" />
+  <meta name="rexs-build" content="11.19.0" />
 </head>
 <body>
   <div id="loginView" class="login-view">
@@ -342,6 +342,11 @@
           <div class="role-strip"><div><b>Employé</b><span>Accès personnalisable</span></div><div><b>Manager</b><span>Accès personnalisable</span></div><div><b>Patron</b><span>Accès complet permanent</span></div></div>
           <article class="panel permissions-panel"><div class="panel-heading"><div><span class="kicker">AUTORISATIONS PAR GRADE</span><h3>Accès aux sections et actions</h3><p>Seuls les patrons peuvent modifier ces autorisations. Les changements s'appliquent à tous les membres du grade concerné.</p></div></div><div id="rolePermissionsManager" class="role-permissions-manager"></div></article>
           <div class="panel table-panel"><div class="table-wrap"><table><thead><tr><th>Employé</th><th>Rôle</th><th>Service</th><th>Salaire</th><th>Compte</th><th>Dernière connexion</th><th class="right">Actions</th></tr></thead><tbody id="employeeTable"></tbody></table></div></div>
+          <div class="employee-sales-section">
+            <div class="panel-heading employee-sales-title"><div><span class="kicker">SUIVI DES ENCAISSEMENTS</span><h3>Ventes par employé</h3><p>Consulte chaque vente, les produits encaissés, la date et l’heure, ainsi que les totaux individuels et le total global réellement crédité en caisse.</p></div></div>
+            <div id="employeeSalesMetrics" class="metrics"></div>
+            <div id="employeeSalesBreakdown" class="employee-sales-breakdown"></div>
+          </div>
         </section>
 
         <section id="view-journal" class="view">
@@ -560,6 +565,6 @@
     <footer><button type="button" class="button button-soft" data-close-dialog="confirmDialog">Annuler</button><button type="button" id="confirmButton" class="button button-danger">Confirmer</button></footer>
   </dialog>
 
-  <script src="app.js?v=11.18.0"></script>
+  <script src="app.js?v=11.19.0"></script>
 </body>
 </html>

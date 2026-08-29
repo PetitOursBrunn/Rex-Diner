@@ -346,7 +346,7 @@
   }
 
 
-  const CLIENT_BUILD='11.18.0';
+  const CLIENT_BUILD='11.19.0';
   let buildCheckTimer=null;
 
   async function checkForNewBuild(force=false){
@@ -875,7 +875,7 @@
     for(const it of r.ingredients)addMaterialToDraft(it.materialId,Number(it.qty)*count,{silent:true});
     const selected=state.supplyRecipeSelections.find(x=>Number(x.recipeId)===Number(r.id));
     if(selected)selected.qty+=count;
-    else state.supplyRecipeSelections.push({recipeId:r.id,name:recipeName(r),icon:r.icon||'🍳',qty:count});
+    else { const linkedProduct=data.products.find(p=>p.id===Number(r.productId)); state.supplyRecipeSelections.push({recipeId:r.id,productId:linkedProduct?.id||null,productName:linkedProduct?.name||null,name:recipeName(r),icon:r.icon||'🍳',qty:count}); }
     renderSupplyDraft();setSupplyTab('order');toast(`Besoins pour ${count} × ${recipeName(r)} ajoutés`);
   }
   function recipeItemsEditor(items=[]){
@@ -963,9 +963,22 @@
       const before=Number(data.cashDrawerPesos||0),after=before-total;
       const order={id:'MAT-'+String(Date.now()).slice(-6),date:nowISO(),employee:state.currentUser.name,employeeId:state.currentUser.id,note:$('#supplyOrderNote').value.trim(),totalPesos:total,balanceBefore:before,balanceAfter:after,items:state.supplyDraft.map(i=>({...i,qty:normalizeSupplyQty(i.qty)})),recipes:state.supplyRecipeSelections.map(r=>({...r,qty:Math.max(1,Math.floor(Number(r.qty)||1))}))};
       data.cashDrawerPesos=after;
+      const producedProducts=[];
+      for(const selected of order.recipes){
+        const recipe=data.recipes.find(r=>Number(r.id)===Number(selected.recipeId));
+        const productId=Number(selected.productId)||Number(recipe?.productId)||null;
+        const product=productId?data.products.find(p=>Number(p.id)===productId):null;
+        const producedQty=Math.max(1,Math.floor(Number(selected.qty)||1));
+        if(product){
+          const stockBefore=Math.max(0,Number(product.stock)||0);
+          product.stock=stockBefore+producedQty;
+          producedProducts.push({productId:product.id,name:product.name,qty:producedQty,stockBefore,stockAfter:product.stock});
+        }
+      }
+      order.producedProducts=producedProducts;
       data.supplyOrders.unshift(order);
       recordDrawerMovement('purchase',total,before,after,`Commande matières ${order.id}`,'MXN',total);
-      save();log('Commande matières',`${order.id} • ${peso(total)} • ${formatQty(qty)} unité(s)`);
+      save();log('Commande matières',`${order.id} • ${peso(total)} • ${formatQty(qty)} unité(s)${producedProducts.length?` • stock +${producedProducts.reduce((sum,p)=>sum+p.qty,0)} produit(s)`:''}`);
       state.supplyDraft=[];state.supplyRecipeSelections=[];state.supplyNote='';$('#supplyOrderNote').value='';
       renderAll();toast(`Commande ${order.id} payée`);
     });
@@ -976,7 +989,9 @@
     const itemLines=(Array.isArray(order.items)?order.items:[]).map(i=>`<div class="receipt-line"><span>${formatQty(i.qty)} ${escapeHtml(i.unit||'')} × ${escapeHtml(i.name)}</span><b>${peso((Number(i.qty)||0)*(Number(i.pricePesos)||0))}</b></div>`).join('');
     const recipes=Array.isArray(order.recipes)?order.recipes:[];
     const recipeLines=recipes.length?recipes.map(r=>`<div class="receipt-line supply-recipe-line"><span>${escapeHtml(r.icon||'🍳')} ${escapeHtml(r.name||'Recette')}</span><b>${Math.max(1,Math.floor(Number(r.qty)||1))} ×</b></div>`).join(''):'<div class="receipt-note">Aucune recette enregistrée pour cette commande (commande manuelle ou antérieure à cette fonctionnalité).</div>';
-    $('#receiptContent').innerHTML=`<div class="receipt-head"><div class="logo">REX'S DINER</div><small>Reçu de commande matières premières</small></div><div class="receipt-meta"><span>Commande</span><b>${escapeHtml(order.id)}</b><span>Date</span><b>${formatDate(order.date)}</b><span>Employé</span><b>${escapeHtml(order.employee||'—')}</b><span>Solde après</span><b>${peso(order.balanceAfter)}</b></div><div class="supply-receipt-section"><b class="supply-receipt-title">MATIÈRES COMMANDÉES</b><div class="receipt-lines">${itemLines}</div></div><div class="supply-receipt-section recipes"><b class="supply-receipt-title">RECETTES SÉLECTIONNÉES</b><div class="receipt-lines">${recipeLines}</div></div><div class="receipt-total-line"><span>TOTAL</span><span>${peso(order.totalPesos)}</span></div>${order.note?`<div class="receipt-note">Note : ${escapeHtml(order.note)}</div>`:''}`;
+    const produced=Array.isArray(order.producedProducts)?order.producedProducts:[];
+    const producedLines=produced.length?produced.map(p=>`<div class="receipt-line supply-produced-line"><span>📦 ${escapeHtml(p.name||'Produit')}</span><b>+${Math.max(0,Number(p.qty)||0)} • stock ${Math.max(0,Number(p.stockBefore)||0)} → ${Math.max(0,Number(p.stockAfter)||0)}</b></div>`).join(''):'<div class="receipt-note">Aucun produit lié à une recette n’a été ajouté au stock.</div>';
+    $('#receiptContent').innerHTML=`<div class="receipt-head"><div class="logo">REX'S DINER</div><small>Reçu de commande matières premières</small></div><div class="receipt-meta"><span>Commande</span><b>${escapeHtml(order.id)}</b><span>Date</span><b>${formatDate(order.date)}</b><span>Employé</span><b>${escapeHtml(order.employee||'—')}</b><span>Solde après</span><b>${peso(order.balanceAfter)}</b></div><div class="supply-receipt-section"><b class="supply-receipt-title">MATIÈRES COMMANDÉES</b><div class="receipt-lines">${itemLines}</div></div><div class="supply-receipt-section recipes"><b class="supply-receipt-title">RECETTES SÉLECTIONNÉES</b><div class="receipt-lines">${recipeLines}</div></div><div class="supply-receipt-section produced"><b class="supply-receipt-title">PRODUITS AJOUTÉS AU STOCK</b><div class="receipt-lines">${producedLines}</div></div><div class="receipt-total-line"><span>TOTAL</span><span>${peso(order.totalPesos)}</span></div>${order.note?`<div class="receipt-note">Note : ${escapeHtml(order.note)}</div>`:''}`;
     openDialog('receiptDialog');
   }
 
@@ -1062,14 +1077,40 @@
     $$('[data-role-permission]').forEach(input=>input.onchange=()=>{if(!can(3))return;const role=input.dataset.rolePermission;const key=input.dataset.permissionKey;data.rolePermissions[role][key]=input.checked;save();log('Permissions',`${role} • ${key} : ${input.checked?'autorisé':'refusé'}`);renderRolePermissions();toast('Permissions mises à jour');});
   }
 
-  function renderEmployees(){ $('#employeeTable').innerHTML=data.employees.map(e=>`<tr><td><div class="employee-cell"><span class="cell-icon">${escapeHtml(e.initials)}</span><b>${escapeHtml(e.name)}</b></div></td><td><span class="status ${e.role==='Patron'?'patron':e.role==='Manager'?'manager':'ok'}">${escapeHtml(e.role)}</span></td><td><span class="status ${e.inService?'ok':'out'}">${e.inService?'En service':'Hors service'}</span>${e.inService?`<small class="service-countdown-small" data-service-countdown="${e.id}">${serviceCountdown(e)}</small>`:''}</td><td>${peso(e.salaryPesos)} / ${Number(e.payrollIntervalMinutes)} min</td><td><span class="status ${e.active?'ok':'out'}">${e.active?'Actif':'Désactivé'}</span></td><td>${formatDate(e.lastLogin)}</td><td class="right"><div class="table-actions"><button type="button" class="table-action edit" data-edit-employee="${e.id}">Modifier</button>${e.id!==state.currentUser?.id?`<button type="button" class="table-action danger" data-delete-employee="${e.id}">Supprimer</button>`:''}</div></td></tr>`).join(''); $$('[data-edit-employee]').forEach(b=>b.onclick=()=>openEmployeeDialog(Number(b.dataset.editEmployee))); $$('[data-delete-employee]').forEach(b=>b.onclick=()=>deleteEmployee(Number(b.dataset.deleteEmployee))); }
+  function saleCreditedPesos(sale){
+    if(Number.isFinite(Number(sale?.creditedPesos)))return Math.max(0,Number(sale.creditedPesos));
+    if((sale?.currency||'USD')==='MXN')return Math.max(0,Number(sale?.paidTotal)||toPesos(Number(sale?.total)||0));
+    const gross=Number(sale?.paidTotal ?? sale?.total)||0;
+    const fee=Number(sale?.conversionFee);
+    const netUsd=Number.isFinite(fee)?Math.max(0,gross-fee):Math.max(0,gross*(1-USD_CONVERSION_FEE_RATE));
+    return toPesos(netUsd);
+  }
+  function employeeSalesFor(emp){return data.sales.filter(s=>Number(s.employeeId)===Number(emp.id)||(!s.employeeId&&String(s.employee||'').trim().toLowerCase()===String(emp.name||'').trim().toLowerCase()));}
+  function renderEmployeeSales(){
+    const metrics=$('#employeeSalesMetrics'),host=$('#employeeSalesBreakdown');if(!metrics||!host)return;
+    const globalTotal=data.sales.reduce((sum,s)=>sum+saleCreditedPesos(s),0);
+    const globalItems=data.sales.reduce((sum,s)=>sum+(Array.isArray(s.items)?s.items.reduce((a,i)=>a+Number(i.qty||0),0):0),0);
+    metrics.innerHTML=[metric('₱','Total global encaissé',peso(globalTotal),'net réellement crédité en caisse','teal'),metric('#','Ventes globales',data.sales.length,'tickets encaissés'),metric('▦','Articles encaissés',globalItems,'unités vendues'),metric('♟','Employés',data.employees.length,'comptes suivis')].join('');
+    host.innerHTML=data.employees.map(emp=>{
+      const sales=employeeSalesFor(emp);
+      const total=sales.reduce((sum,s)=>sum+saleCreditedPesos(s),0);
+      const itemCount=sales.reduce((sum,s)=>sum+(Array.isArray(s.items)?s.items.reduce((a,i)=>a+Number(i.qty||0),0):0),0);
+      const rows=sales.length?sales.map(s=>{
+        const items=(Array.isArray(s.items)?s.items:[]).map(i=>`${Math.max(0,Number(i.qty)||0)} × ${escapeHtml(i.name||'Produit')}`).join('<br>')||'—';
+        return `<tr><td>${formatDate(s.date)}</td><td><b>${escapeHtml(s.id||'—')}</b></td><td class="employee-sale-items">${items}</td><td>${escapeHtml(s.method||'Espèces')} • ${currencyName(s.currency||'USD')}</td><td><b>${peso(saleCreditedPesos(s))}</b><small class="table-conversion">payé ${currencyAmount(s.paidTotal ?? ((s.currency||'USD')==='MXN'?toPesos(s.total):s.total),s.currency||'USD')}</small></td><td><button type="button" class="table-action" data-employee-sale-receipt="${escapeHtml(s.id)}">Ticket</button></td></tr>`;
+      }).join(''):`<tr><td colspan="6" class="empty-table">Aucune vente pour cet employé.</td></tr>`;
+      return `<article class="panel employee-sales-card"><div class="employee-sales-head"><div class="employee-sales-identity"><span class="cell-icon">${escapeHtml(emp.initials||'—')}</span><div><h3>${escapeHtml(emp.name)}</h3><small>${escapeHtml(emp.role||'Employé')}</small></div></div><div class="employee-sales-totals"><div><span>Ventes</span><b>${sales.length}</b></div><div><span>Articles</span><b>${itemCount}</b></div><div class="highlight"><span>Total encaissé</span><b>${peso(total)}</b></div></div></div><div class="table-wrap"><table><thead><tr><th>Date & heure</th><th>Ticket</th><th>Produits encaissés</th><th>Paiement</th><th>Encaissé net</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></article>`;
+    }).join('');
+    $$('[data-employee-sale-receipt]',host).forEach(b=>b.onclick=()=>{const sale=data.sales.find(s=>String(s.id)===String(b.dataset.employeeSaleReceipt));if(sale)showReceipt(sale);});
+  }
+  function renderEmployees(){ $('#employeeTable').innerHTML=data.employees.map(e=>`<tr><td><div class="employee-cell"><span class="cell-icon">${escapeHtml(e.initials)}</span><b>${escapeHtml(e.name)}</b></div></td><td><span class="status ${e.role==='Patron'?'patron':e.role==='Manager'?'manager':'ok'}">${escapeHtml(e.role)}</span></td><td><span class="status ${e.inService?'ok':'out'}">${e.inService?'En service':'Hors service'}</span>${e.inService?`<small class="service-countdown-small" data-service-countdown="${e.id}">${serviceCountdown(e)}</small>`:''}</td><td>${peso(e.salaryPesos)} / ${Number(e.payrollIntervalMinutes)} min</td><td><span class="status ${e.active?'ok':'out'}">${e.active?'Actif':'Désactivé'}</span></td><td>${formatDate(e.lastLogin)}</td><td class="right"><div class="table-actions"><button type="button" class="table-action edit" data-edit-employee="${e.id}">Modifier</button>${e.id!==state.currentUser?.id?`<button type="button" class="table-action danger" data-delete-employee="${e.id}">Supprimer</button>`:''}</div></td></tr>`).join(''); $$('[data-edit-employee]').forEach(b=>b.onclick=()=>openEmployeeDialog(Number(b.dataset.editEmployee))); $$('[data-delete-employee]').forEach(b=>b.onclick=()=>deleteEmployee(Number(b.dataset.deleteEmployee))); renderEmployeeSales(); }
   function openEmployeeDialog(id=null){ if(!can(3)){toast('Accès refusé');return;} const e=id?data.employees.find(x=>x.id===id):null;$('#employeeDialogTitle').textContent=e?'Modifier l’employé':'Ajouter un employé';$('#employeeId').value=e?.id||'';$('#employeeName').value=e?.name||'';$('#employeeInitials').value=e?.initials||'';$('#employeeRole').value=e?.role||'Employé';$('#employeePin').value=e?.pin||'';$('#employeeSalary').value=e?.salaryPesos??0;$('#employeePayrollInterval').value=e?.payrollIntervalMinutes??60;$('#employeeActive').checked=e?.active??true;openDialog('employeeDialog'); }
   function saveEmployee(e){ e.preventDefault(); const id=Number($('#employeeId').value)||null; const pin=$('#employeePin').value.trim();if(!/^\d{4}$/.test(pin)){toast('Le PIN doit contenir 4 chiffres');return;}const emp={name:$('#employeeName').value.trim(),initials:$('#employeeInitials').value.trim().toUpperCase(),role:$('#employeeRole').value,pin,active:$('#employeeActive').checked,salaryPesos:Math.max(0,Number($('#employeeSalary').value)||0),payrollIntervalMinutes:Math.max(1,Number($('#employeePayrollInterval').value)||60)};if(!emp.name||!emp.initials){toast('Complète les informations');return;}if(id){const target=data.employees.find(x=>x.id===id);const intervalChanged=Number(target.payrollIntervalMinutes)!==emp.payrollIntervalMinutes;Object.assign(target,emp);if(target.inService&&intervalChanged)target.nextPayrollAt=new Date(Date.now()+emp.payrollIntervalMinutes*60000).toISOString();if(state.currentUser.id===id)state.currentUser=target;log('Employé',`${emp.name} modifié (${emp.role})`);}else{emp.id=Date.now();emp.lastLogin=null;emp.inService=false;emp.serviceStartedAt=null;emp.nextPayrollAt=null;data.employees.push(emp);log('Employé',`${emp.name} ajouté (${emp.role})`);}save();closeDialog('employeeDialog');applyPermissions();renderAll();renderLogin();toast(id?'Employé modifié':'Employé ajouté'); }
   function deleteEmployee(id){const e=data.employees.find(x=>x.id===id);if(!e)return;confirmAction('Supprimer cet employé ?',`${e.name} ne pourra plus se connecter.`,()=>{data.employees=data.employees.filter(x=>x.id!==id);save();log('Employé',`${e.name} supprimé`);renderEmployees();renderLogin();toast('Employé supprimé');});}
 
   function renderJournal(){ const q=state.journalSearch.toLowerCase().trim();const list=data.journal.filter(j=>`${j.employee} ${j.action} ${j.detail}`.toLowerCase().includes(q));$('#journalTable').innerHTML=list.length?list.map(j=>`<tr><td>${formatDate(j.date)}</td><td>${escapeHtml(j.employee)}</td><td><b>${escapeHtml(j.action)}</b></td><td>${escapeHtml(j.detail)}</td></tr>`).join(''):'<tr><td colspan="4" class="empty-table">Aucune activité enregistrée.</td></tr>'; }
 
-  function exportData(){ const payload={version:11.18,exportedAt:nowISO(),data}; downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`rexs-diner-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);toast('Sauvegarde téléchargée'); }
+  function exportData(){ const payload={version:11.19,exportedAt:nowISO(),data}; downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),`rexs-diner-sauvegarde-${new Date().toISOString().slice(0,10)}.json`);toast('Sauvegarde téléchargée'); }
   function importData(file){ const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result);const source=parsed.data||parsed;if(!Array.isArray(source.products)||!Array.isArray(source.employees))throw new Error();confirmAction('Importer cette sauvegarde ?','Les données actuelles seront remplacées.',()=>{Object.assign(data,fresh(),source);normalizeData(data);save();log('Sauvegarde','Données importées');renderAll();renderLogin();toast('Sauvegarde importée');});}catch{toast('Fichier de sauvegarde invalide');}};reader.readAsText(file); }
   function downloadBlob(blob,name){ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500); }
 
