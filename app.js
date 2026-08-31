@@ -9,6 +9,7 @@
   const peso = n => new Intl.NumberFormat('fr-BE',{maximumFractionDigits:2}).format(Number(n)||0)+' pesos';
   const toPesos = usd => (Number(usd)||0)*EXCHANGE_RATE;
   const toDollars = mxn => (Number(mxn)||0)/EXCHANGE_RATE;
+  const posDualPrice = usd => `<span class="price-usd">${money(usd)}</span><span class="price-mxn">${peso(toPesos(usd))}</span>`;
   const currencyName = c => c==='MXN'?'Pesos':'Dollars';
   const currencyAmount = (amount,currency) => currency==='MXN'?peso(amount):money(amount);
   const nowISO = () => new Date().toISOString();
@@ -346,7 +347,7 @@
   }
 
 
-  const CLIENT_BUILD='11.21.0';
+  const CLIENT_BUILD='11.22.0';
   let buildCheckTimer=null;
 
   async function checkForNewBuild(force=false){
@@ -504,8 +505,8 @@
     const products=data.products.filter(p=>(state.category==='Tous'||p.category===state.category)&&p.name.toLowerCase().includes(q));
     const menus=data.menus.filter(m=>(state.category==='Tous'||state.category==='Menus')&&m.name.toLowerCase().includes(q));
     const cards=[];
-    menus.forEach(m=>{const stock=menuAvailableStock(m),st=statusFor(stock),parts=m.items.map(it=>{const p=data.products.find(x=>x.id===it.productId);return p?`${it.qty}× ${p.name}`:''}).filter(Boolean).join(' • ');cards.push(`<article class="product-card menu-card ${stock<=0?'out':''}"><div class="emoji">${m.icon||'🍽️'}</div><h4>${escapeHtml(m.name)}</h4><p>Menu • ${escapeHtml(parts)}</p><div class="product-bottom"><b>${money(m.price)}</b><span class="stock-badge ${st.cls}">${stock<=0?'Rupture':stock+' menu(s)'}</span></div>${productQtyControls(m.id,'menu',stock)}</article>`);});
-    products.forEach(p=>{const st=statusFor(p.stock);cards.push(`<article class="product-card ${p.stock<=0?'out':''}"><div class="emoji">${p.icon||'🍽️'}</div><h4>${escapeHtml(p.name)}</h4><p>${escapeHtml(p.category)}</p><div class="product-bottom"><b>${money(p.price)}</b><span class="stock-badge ${st.cls}">${p.stock<=0?'Rupture':p.stock+' dispo.'}</span></div>${productQtyControls(p.id,'product',p.stock)}</article>`);});
+    menus.forEach(m=>{const stock=menuAvailableStock(m),st=statusFor(stock),parts=m.items.map(it=>{const p=data.products.find(x=>x.id===it.productId);return p?`${it.qty}× ${p.name}`:''}).filter(Boolean).join(' • ');cards.push(`<article class="product-card menu-card ${stock<=0?'out':''}"><div class="emoji">${m.icon||'🍽️'}</div><h4>${escapeHtml(m.name)}</h4><p>Menu • ${escapeHtml(parts)}</p><div class="product-bottom"><b class="dual-price">${posDualPrice(m.price)}</b><span class="stock-badge ${st.cls}">${stock<=0?'Rupture':stock+' menu(s)'}</span></div>${productQtyControls(m.id,'menu',stock)}</article>`);});
+    products.forEach(p=>{const st=statusFor(p.stock);cards.push(`<article class="product-card ${p.stock<=0?'out':''}"><div class="emoji">${p.icon||'🍽️'}</div><h4>${escapeHtml(p.name)}</h4><p>${escapeHtml(p.category)}</p><div class="product-bottom"><b class="dual-price">${posDualPrice(p.price)}</b><span class="stock-badge ${st.cls}">${p.stock<=0?'Rupture':p.stock+' dispo.'}</span></div>${productQtyControls(p.id,'product',p.stock)}</article>`);});
     $('#productGrid').innerHTML=cards.length?cards.join(''):'<div class="empty-mini">Aucun produit trouvé.</div>';
     $$('[data-pos-qty-step]').forEach(b=>b.onclick=()=>adjustPosQty(b.dataset.posType,Number(b.dataset.posId),Number(b.dataset.posQtyStep)));
     $$('[data-pos-add]').forEach(b=>b.onclick=()=>{const type=b.dataset.posType||'product',id=Number(b.dataset.posId),input=$(`[data-pos-qty="${type}-${id}"]`);addToCart(id,type,Math.max(1,Math.floor(Number(input?.value)||1)));});
