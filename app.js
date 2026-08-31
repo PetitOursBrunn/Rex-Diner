@@ -347,7 +347,7 @@
   }
 
 
-  const CLIENT_BUILD='11.22.0';
+  const CLIENT_BUILD='11.23.0';
   let buildCheckTimer=null;
 
   async function checkForNewBuild(force=false){
@@ -877,7 +877,7 @@
     const selected=state.supplyRecipeSelections.find(x=>Number(x.recipeId)===Number(r.id));
     if(selected)selected.qty+=count;
     else { const linkedProduct=data.products.find(p=>p.id===Number(r.productId)); state.supplyRecipeSelections.push({recipeId:r.id,productId:linkedProduct?.id||null,productName:linkedProduct?.name||null,name:recipeName(r),icon:r.icon||'🍳',qty:count}); }
-    renderSupplyDraft();setSupplyTab('order');toast(`Besoins pour ${count} × ${recipeName(r)} ajoutés`);
+    renderSupplyDraft();toast(`Besoins pour ${count} × ${recipeName(r)} ajoutés`);
   }
   function recipeItemsEditor(items=[]){
     const host=$('#recipeIngredientsEditor');if(!host)return;

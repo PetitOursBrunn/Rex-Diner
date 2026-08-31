@@ -124,3 +124,10 @@ Le patron peut configurer les accès des grades Employé et Manager aux sections
 - Toutes les mutations Discord sont persistées, synchronisées en temps réel avec le site et inscrites dans le journal d’activité.
 - File d’envoi, temporisation, retries et déduplication pour réduire le spam et améliorer la fiabilité Discord.
 - Les fonctionnalités V11.20.0 et toutes les fonctions antérieures du site sont conservées.
+
+
+## Nouveautés V11.23.0 — salaires Discord & onglet recettes
+
+- Les notifications automatiques de salaire sont envoyées dans le salon Discord dédié `#rex-salaires`.
+- Le salon est créé automatiquement avec `DISCORD_AUTO_SETUP=true` et peut être défini manuellement avec `DISCORD_PAYROLL_CHANNEL_ID`.
+- Après « Ajouter les matières » depuis une recette, l'interface reste désormais sur l'onglet « Recettes & production » au lieu de revenir sur la liste des matières.

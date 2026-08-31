@@ -17,6 +17,7 @@ const COLORS = {
   warning: 0xFEE75C,
   danger: 0xED4245,
   cash: 0xE67E22,
+  payroll: 0x2ECC71,
   stock: 0x3498DB,
   team: 0x9B59B6,
   admin: 0x95A5A6,
@@ -65,6 +66,7 @@ class RexDiscordBot {
       stock: env('DISCORD_STOCK_CHANNEL_ID'),
       supplies: env('DISCORD_SUPPLIES_CHANNEL_ID'),
       cash: env('DISCORD_CASH_CHANNEL_ID'),
+      payroll: env('DISCORD_PAYROLL_CHANNEL_ID'),
       team: env('DISCORD_TEAM_CHANNEL_ID'),
       admin: env('DISCORD_ADMIN_CHANNEL_ID'),
       system: env('DISCORD_SYSTEM_CHANNEL_ID'),
@@ -161,7 +163,8 @@ class RexDiscordBot {
     if(a.includes('vente')) return 'sales';
     if(a.includes('stock') || a.includes('produit') || a.includes('menus') || a.includes('categor')) return 'stock';
     if(a.includes('commande matieres') || a.includes('matiere') || a.includes('recette')) return 'supplies';
-    if(a.includes('fonds de caisse') || a.includes('salaire') || a.includes('caisse')) return 'cash';
+    if(a.includes('salaire')) return 'payroll';
+    if(a.includes('fonds de caisse') || a.includes('caisse')) return 'cash';
     if(a.includes('service') || a.includes('employe') || a.includes('connexion') || a.includes('verrouillage')) return 'team';
     if(a.includes('permission') || a.includes('reglage') || a.includes('sauvegarde') || a.includes('journal') || a.includes('remise')) return 'admin';
     return 'activity';
@@ -169,11 +172,11 @@ class RexDiscordBot {
 
   colorFor(action){
     const c=this.categoryFor(action);
-    return ({sales:COLORS.success,stock:COLORS.stock,supplies:COLORS.warning,cash:COLORS.cash,team:COLORS.team,admin:COLORS.admin})[c] || COLORS.info;
+    return ({sales:COLORS.success,stock:COLORS.stock,supplies:COLORS.warning,cash:COLORS.cash,payroll:COLORS.payroll,team:COLORS.team,admin:COLORS.admin})[c] || COLORS.info;
   }
   iconFor(action){
     const c=this.categoryFor(action);
-    return ({sales:'💵',stock:'📦',supplies:'🚚',cash:'🏦',team:'👤',admin:'⚙️'})[c] || '📝';
+    return ({sales:'💵',stock:'📦',supplies:'🚚',cash:'🏦',payroll:'💰',team:'👤',admin:'⚙️'})[c] || '📝';
   }
 
   async ensureChannels(){
@@ -199,7 +202,7 @@ class RexDiscordBot {
         try { await category.permissionOverwrites.edit(roleId,{ViewChannel:true,ReadMessageHistory:true}); } catch(err){ console.warn(`Discord : rôle ${roleId} non appliqué aux logs : ${err.message}`); }
       }
       const wanted={
-        activity:'rex-activite',sales:'rex-ventes',stock:'rex-stocks',supplies:'rex-commandes',cash:'rex-caisse',team:'rex-equipe',
+        activity:'rex-activite',sales:'rex-ventes',stock:'rex-stocks',supplies:'rex-commandes',cash:'rex-caisse',payroll:'rex-salaires',team:'rex-equipe',
         admin:'rex-admin',system:'rex-systeme',alerts:'rex-alertes',reports:'rex-rapports'
       };
       for(const [key,name] of Object.entries(wanted)){
@@ -286,7 +289,7 @@ class RexDiscordBot {
       }
     } else if(this.categoryFor(action)==='stock'){
       const stock=this.lowStockFields(state); stock.fields.forEach(f=>embed.addFields(f));
-    } else if(this.categoryFor(action)==='cash') embed.addFields({name:'Solde actuel',value:peso(state.cashDrawerPesos),inline:true});
+    } else if(this.categoryFor(action)==='cash' || this.categoryFor(action)==='payroll') embed.addFields({name:'Solde actuel',value:peso(state.cashDrawerPesos),inline:true});
     else if(this.categoryFor(action)==='team'){
       const emp=arr(state.employees).find(e=>e.name===entry.employee || String(entry.detail||'').includes(e.name));
       if(emp) embed.addFields({name:'Statut',value:emp.inService?'🟢 En service':'⚫ Hors service',inline:true});

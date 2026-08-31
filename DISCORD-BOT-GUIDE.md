@@ -1,8 +1,14 @@
-# Bot Discord Rex's Diner — V11.21.0
+# Bot Discord Rex's Diner — V11.23.0
 
 Le bot est intégré au même serveur Node.js que Rex's Diner. Il démarre avec le site sur Render et reste totalement non bloquant : une panne Discord n'empêche jamais la caisse ou la synchronisation du site de fonctionner.
 
-## Nouveautés V11.21.0
+## Nouveautés V11.23.0
+
+- les notifications automatiques de salaire sont envoyées dans un salon dédié `#rex-salaires` ;
+- avec `DISCORD_AUTO_SETUP=true`, ce salon est créé automatiquement s'il n'existe pas ;
+- en configuration manuelle, le salon peut être défini avec `DISCORD_PAYROLL_CHANNEL_ID`.
+
+## Gestion Discord héritée de V11.21.0
 
 La V11.21 transforme le bot de journalisation en véritable console de gestion sécurisée.
 
@@ -50,6 +56,7 @@ Avec `DISCORD_AUTO_SETUP=true`, le bot conserve les salons existants et ajoute s
 - `#rex-stocks`
 - `#rex-commandes`
 - `#rex-caisse`
+- `#rex-salaires`
 - `#rex-equipe`
 - `#rex-admin`
 - `#rex-systeme`
@@ -94,3 +101,8 @@ Les horaires sont au format `HH:MM`. Pour le jour hebdomadaire : 0=dimanche, 1=l
 - synchronisation SSE du site après une action Discord ;
 - persistance immédiate des mutations Discord ;
 - bot totalement isolé du chemin critique de la caisse.
+
+
+## Salon salaires
+
+Les écritures de journal dont l'action est `Salaire` sont routées vers `#rex-salaires` au lieu de `#rex-caisse`. Les autres mouvements de caisse restent dans `#rex-caisse`. En configuration manuelle, utilisez `DISCORD_PAYROLL_CHANNEL_ID`.
